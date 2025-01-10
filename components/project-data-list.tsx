@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { Checkbox } from "@/components/ui/checkbox"
 
 type ProjectData = {
+  [key: string]: string | string[] | boolean | number;
   id: string;
   projectNo: string;
   projectName: string;
@@ -22,7 +23,7 @@ type ProjectData = {
   isLocked: boolean;
   isNonStandard: boolean;
   hasAttachment: boolean;
-  codeName?: string;
+  codeName: string;
 }
 
 type SortConfig = {
@@ -102,10 +103,13 @@ export function ProjectDataList({ searchFilters }: { searchFilters: SearchFilter
     }
 
     return [...projectData].sort((a, b) => {
-      if (a[sortConfig.key!] < b[sortConfig.key!]) {
+      const key = sortConfig.key;
+      if (!key) return 0;
+      
+      if (a[key] < b[key]) {
         return sortConfig.direction === 'asc' ? -1 : 1
       }
-      if (a[sortConfig.key!] > b[sortConfig.key!]) {
+      if (a[key] > b[key]) {
         return sortConfig.direction === 'asc' ? 1 : -1
       }
       return 0

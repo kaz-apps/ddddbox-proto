@@ -2,11 +2,16 @@
 
 import React, { useState, useEffect } from 'react'
 import { TextField, Button, Checkbox, FormControlLabel, Card, CardContent, Autocomplete, Chip, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
-import { IconRefresh, IconTrash, IconSave } from '@tabler/icons-react'
+import { IconRefresh, IconTrash, IconDeviceFloppy } from '@tabler/icons-react'
 import toast from 'react-hot-toast'
 
+type ProjectMember = {
+  value: string;
+  label: string;
+}
+
 // プロジェクトメンバーリスト
-const projectMembers = [
+const projectMembers: ProjectMember[] = [
   { value: 'itashita', label: '板下和彦' },
   { value: 'arasaki', label: '新崎健吾' },
   { value: 'matsubara', label: '松原昌玲' },
@@ -34,27 +39,45 @@ type SavedSearch = {
   filters: typeof initialFilters;
 }
 
+type DocumentTypeOption = {
+  group: string;
+  value: string;
+  label: string;
+}
+
+type DocumentTypeGroup = {
+  group: string;
+  collapsed: boolean;
+  items: DocumentTypeOption[];
+}
+
+type DocumentTypeOptionWithHeader = DocumentTypeOption | {
+  group: string;
+  isGroupHeader: true;
+  collapsed: boolean;
+}
+
 export function SearchSidebar({ onSearchFiltersChange }: SearchSidebarProps) {
   const [filters, setFilters] = useState(initialFilters)
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newSearchName, setNewSearchName] = useState('')
 
-  const [documentTypes, setDocumentTypes] = useState([
+  const [documentTypes, setDocumentTypes] = useState<DocumentTypeGroup[]>([
     {
       group: '予算',
       collapsed: false,
       items: [
-        { value: 'designCost', label: '設計費用' },
-        { value: 'constructionCost', label: '工事費' },
+        { group: '予算', value: 'designCost', label: '設計費用' },
+        { group: '予算', value: 'constructionCost', label: '工事費' },
       ]
     },
     {
       group: '申請',
       collapsed: false,
       items: [
-        { value: 'applicationStatus', label: '申請状況' },
-        { value: 'variousApplications', label: '各種申請' },
+        { group: '申請', value: 'applicationStatus', label: '申請状況' },
+        { group: '申請', value: 'variousApplications', label: '各種申請' },
       ]
     },
   ]);
@@ -202,18 +225,20 @@ export function SearchSidebar({ onSearchFiltersChange }: SearchSidebarProps) {
                   {!documentTypes.find(g => g.group === params.group)?.collapsed && params.children}
                 </div>
               )}
-              value={flatDocumentTypes.filter(item => filters.documentType.includes(item.value))}
+              value={flatDocumentTypes.filter(item => filters.documentType.includes(item.value)) as DocumentTypeOption[]}
               onChange={(_, newValue) => {
-                updateFilters({ documentType: newValue.map(item => item.value) })
+                const validOptions = newValue.filter((item): item is DocumentTypeOption => !('isGroupHeader' in item));
+                updateFilters({ documentType: validOptions.map(item => item.value) });
               }}
               renderInput={(params) => <TextField {...params} label="カルテ項目" />}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => {
+                  if ('isGroupHeader' in option) return null;
                   const { key, ...tagProps } = getTagProps({ index });
                   return (
                     <Chip
                       key={option.value}
-                      label={`${option.label}`}
+                      label={option.label}
                       {...tagProps}
                       onDelete={() => {
                         const newTypes = filters.documentType.filter(t => t !== option.value);
@@ -221,20 +246,24 @@ export function SearchSidebar({ onSearchFiltersChange }: SearchSidebarProps) {
                       }}
                     />
                   )
-                })
+                }).filter(Boolean)
               }
               renderOption={(props, option) => {
                 if ('isGroupHeader' in option) {
-                  return null; // グループヘッダーは表示しない
+                  return null;
                 }
-                const { key, ...otherProps } = props;
                 return (
-                  <li key={key} {...otherProps}>
-                    {`${option.label}`}
+                  <li {...props}>
+                    {option.label}
                   </li>
                 );
               }}
-              isOptionEqualToValue={(option, value) => option.value === value.value}
+              isOptionEqualToValue={(option, value) => {
+                if ('isGroupHeader' in option || 'isGroupHeader' in value) {
+                  return false;
+                }
+                return option.value === value.value;
+              }}
             />
 
             {/* チェックボックス */}

@@ -15,7 +15,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-export function ProjectDetailsForm() {
+interface ProjectDetailsFormProps {
+  projectId: string;
+}
+
+export function ProjectDetailsForm({ projectId }: ProjectDetailsFormProps) {
   const [formData, setFormData] = useState({
     designStartDate: new Date('2024-01-01'),
     designEndDate: new Date('2024-01-01'),
