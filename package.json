@@ -1,24 +1,36 @@
 {
-  "name": "ddddbox-proto",
+  "name": "my-app",
   "version": "0.1.0",
   "private": true,
+  "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/material": "^5.14.5",
+    "@radix-ui/react-checkbox": "^1.0.4",
+    "@radix-ui/react-label": "^2.0.2",
+    "@radix-ui/react-select": "^1.2.2",
+    "@radix-ui/react-toast": "^1.1.4",
+    "@tabler/icons-react": "^2.40.0",
+    "class-variance-authority": "^0.6.0",
+    "clsx": "^1.2.1",
+    "lucide-react": "^0.244.0",
+    "next": "^14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.4.1",
+    "tailwind-merge": "^1.13.2",
+    "tailwindcss-animate": "^1.0.6"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.5",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.24",
+    "tailwindcss": "^3.3.2",
+    "typescript": "5.7.3"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "next": "15.0.4"
-  },
-  "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1"
+    "start": "next start"
   }
 }
