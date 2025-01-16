@@ -28,7 +28,11 @@ export function ProjectDetailsForm({ projectId }: ProjectDetailsFormProps) {
     specificProcessEndDate: new Date('2024-01-01'),
     specificProcessName: '2階の床及びこれを支持するはりに鉄筋を配置する工事の工程',
     designCosts: '100000',
-    constructionCosts: '99999'
+    constructionCosts: '99999',
+    prefecture: '東京都',
+    city: '千代田区',
+    address: '丸の内1-1-1',
+    buildingName: '丸の内ビル'
   })
 
   const handleDateChange = (field: string, date: Date | undefined) => {
@@ -214,6 +218,50 @@ export function ProjectDetailsForm({ projectId }: ProjectDetailsFormProps) {
               />
               <span className="text-sm text-gray-500">千円</span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>計画地</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>都道府県</Label>
+              <Input
+                name="prefecture"
+                value={formData.prefecture}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>市区町村</Label>
+              <Input
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>住所</Label>
+            <Input
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+              placeholder="番地まで入力してください"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>建物名</Label>
+            <Input
+              name="buildingName"
+              value={formData.buildingName}
+              onChange={handleInputChange}
+              placeholder="建物名がある場合は入力してください"
+            />
           </div>
         </CardContent>
       </Card>

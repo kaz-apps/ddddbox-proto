@@ -1,6 +1,6 @@
 "use client"
 
-import { IconBell, IconChevronLeft, IconChevronRight, IconSettings, IconUsers, IconFolder, IconDatabase } from '@tabler/icons-react'
+import { IconBell, IconChevronLeft, IconChevronRight, IconSettings, IconUsers, IconFolder, IconDatabase, IconChevronDown } from '@tabler/icons-react'
 import Link from "next/link"
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -12,7 +12,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isCodeNameDisplayed, setIsCodeNameDisplayed] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [expandedProjects, setExpandedProjects] = useState<string[]>([])
   const pathname = usePathname()
+
+  const toggleProject = (projectId: string) => {
+    setExpandedProjects(prev =>
+      prev.includes(projectId)
+        ? prev.filter(id => id !== projectId)
+        : [...prev, projectId]
+    )
+  }
 
   return (
     <div className="flex h-screen bg-background">
@@ -80,14 +89,38 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="mb-2 text-sm">プロジェクト一覧</div>
             <nav className="space-y-1">
               {mockProjects.map((project) => (
-                <Link
-                  key={project.id}
-                  href={`/project-details/${project.id}`}
-                  className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-md text-sm"
-                >
-                  <IconFolder className="w-4 h-4" />
-                  <span>{project.name}</span>
-                </Link>
+                <div key={project.id} className="space-y-1">
+                  <div
+                    className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-md text-sm cursor-pointer"
+                    onClick={() => toggleProject(project.id)}
+                  >
+                    <IconChevronDown
+                      className={`w-4 h-4 transition-transform ${
+                        expandedProjects.includes(project.id) ? 'rotate-0' : '-rotate-90'
+                      }`}
+                    />
+                    <IconFolder className="w-4 h-4" />
+                    <span>{project.name}</span>
+                  </div>
+                  {expandedProjects.includes(project.id) && (
+                    <div className="ml-4 space-y-1 border-l-2 border-white/20 pl-2">
+                      <Link
+                        href={`/project-details/${project.id}`}
+                        className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-md text-sm"
+                      >
+                        <IconFolder className="w-4 h-4" />
+                        <span>プロジェクト詳細</span>
+                      </Link>
+                      <Link
+                        href={`/project-details/${project.id}/ordinance-search`}
+                        className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-md text-sm"
+                      >
+                        <IconDatabase className="w-4 h-4" />
+                        <span>条例自動検索</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
               ))}
             </nav>
           </div>
@@ -97,7 +130,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <div className="flex-1 bg-background overflow-y-auto">
         <header className="border-b p-4 flex items-center justify-between">
-          <h1 className="text-lg font-medium">プロジェクト一覧</h1>
+          <h1 className="text-lg font-medium">
+            {pathname.includes('ordinance-search') ? '条例自動検索' :
+             pathname.includes('project-details') ? 'プロジェクト詳細' :
+             'プロジェクト一覧'}
+          </h1>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <button
