@@ -7,6 +7,8 @@ import { usePathname } from 'next/navigation'
 import { ProjectDetailsForm } from './project-details-form'
 import { Settings } from './settings'
 import { mockProjects } from './project-list'
+import { motion } from "framer-motion";
+
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [isCodeNameDisplayed, setIsCodeNameDisplayed] = useState(false)
@@ -102,29 +104,40 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <IconFolder className="w-4 h-4" />
                     <span>{project.name}</span>
                   </div>
-                  {expandedProjects.includes(project.id) && (
-                    <div className="ml-4 space-y-1 border-l-2 border-white/20 pl-2">
-                      <Link
-                        href={`/project-details/${project.id}`}
-                        className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-md text-sm"
-                      >
-                        <IconFolder className="w-4 h-4" />
-                        <span>プロジェクト詳細</span>
-                      </Link>
-                      <Link
-                        href={`/project-details/${project.id}/ordinance-search`}
-                        className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-md text-sm"
-                      >
-                        <IconDatabase className="w-4 h-4" />
-                        <span>条例自動検索</span>
-                      </Link>
-                    </div>
-                  )}
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{
+                      height: expandedProjects.includes(project.id) ? "auto" : 0,
+                      opacity: expandedProjects.includes(project.id) ? 1 : 0,
+                    }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="ml-4 space-y-1 border-l-2 border-white/20 pl-2 overflow-hidden"
+                  >
+                    {expandedProjects.includes(project.id) && (
+                      <>
+                        <Link
+                          href={`/project-details/${project.id}`}
+                          className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-md text-sm"
+                        >
+                          <IconFolder className="w-4 h-4" />
+                          <span>建物カルテ</span>
+                        </Link>
+                        <Link
+                          href={`/project-details/${project.id}/ordinance-search`}
+                          className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-md text-sm"
+                        >
+                          <IconDatabase className="w-4 h-4" />
+                          <span>条例自動検索</span>
+                        </Link>
+                      </>
+                    )}
+                  </motion.div>
                 </div>
               ))}
             </nav>
           </div>
         )}
+
       </div>
 
       {/* Main Content */}
