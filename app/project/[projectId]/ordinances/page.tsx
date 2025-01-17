@@ -26,7 +26,7 @@ export default function OrdinancesPage({ params }: PageProps) {
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-2xl font-bold mb-6">条例一覧</h1>
-      <OrdinanceList ordinances={mockOrdinances} municipality="○○市" />
+      <OrdinanceList municipality="○○市" />
     </div>
   );
 } 

@@ -67,7 +67,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Organization Header */}
         <div className="flex items-center gap-2 mb-8">
           <img
-            src="https://news.biglobe.ne.jp/animal/1209/2354273656/grp_20241209232411_1.jpg"
+            src="https://pbs.twimg.com/media/DlGW0oCVAAAy8WO.jpg"
             alt="Organization Logo"
             className="w-8 h-8 bg-white rounded-md object-cover"
           />
