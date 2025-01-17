@@ -2,20 +2,45 @@
 
 import { IconBell, IconChevronLeft, IconChevronRight, IconSettings, IconUsers, IconFolder, IconDatabase, IconChevronDown } from '@tabler/icons-react'
 import Link from "next/link"
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { ProjectDetailsForm } from './project-details-form'
 import { Settings } from './settings'
-import { mockProjects } from './project-list'
-import { motion } from "framer-motion";
-
+import { motion } from "framer-motion"
+import { supabase } from '@/lib/supabase'
+import type { Project } from '@/lib/supabase'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [isCodeNameDisplayed, setIsCodeNameDisplayed] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [expandedProjects, setExpandedProjects] = useState<string[]>([])
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const pathname = usePathname()
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('project_no')
+
+        if (error) {
+          throw error
+        }
+
+        setProjects(data)
+      } catch (err) {
+        console.error('Error fetching projects:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProjects()
+  }, [])
 
   const toggleProject = (projectId: string) => {
     setExpandedProjects(prev =>
@@ -38,6 +63,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <IconChevronRight className="w-4 h-4" />
           </button>
         )}
+
         {/* Organization Header */}
         <div className="flex items-center gap-2 mb-8">
           <img
@@ -45,7 +71,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             alt="Organization Logo"
             className="w-8 h-8 bg-white rounded-md object-cover"
           />
-          {!isSidebarCollapsed && <div className="flex-1">○○さんの組織</div>}
+          {!isSidebarCollapsed && <div className="flex-1">AMD建築設計事務所</div>}
           <IconChevronLeft
             className={`w-5 h-5 cursor-pointer transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`}
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -86,11 +112,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Project List */}
-        {!isSidebarCollapsed && (
+        {!isSidebarCollapsed && !isLoading && (
           <div className="mt-8">
             <div className="mb-2 text-sm">プロジェクト一覧</div>
             <nav className="space-y-1">
-              {mockProjects.map((project) => (
+              {projects.map((project) => (
                 <div key={project.id} className="space-y-1">
                   <div
                     className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-md text-sm cursor-pointer"
@@ -137,7 +163,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
         )}
-
       </div>
 
       {/* Main Content */}

@@ -1,10 +1,19 @@
 "use client"
 
 import React from 'react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import Layout from "@/components/layout"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { supabase } from '@/lib/supabase'
+import type { Ordinance as OrdinanceType } from '@/lib/supabase'
 
 interface OrdinanceSearchPageProps {
   params: {
@@ -12,13 +21,7 @@ interface OrdinanceSearchPageProps {
   };
 }
 
-interface Ordinance {
-  prefecture: string;
-  category: string;
-  name: string;
-  referenceUrl: string;
-  currentUrl: string;
-  section: "調査" | "用途・規模・計画" | "条例手続き" | "緑化";
+interface Ordinance extends OrdinanceType {
   status?: "該当" | "非該当" | null;
   note?: string;
 }
@@ -30,6 +33,9 @@ export default function OrdinanceSearchPage({ params }: OrdinanceSearchPageProps
   const [noteModalOpen, setNoteModalOpen] = useState(false)
   const [currentOrdinance, setCurrentOrdinance] = useState<Ordinance | null>(null)
   const [note, setNote] = useState("")
+  const [ordinances, setOrdinances] = useState<Ordinance[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // 都道府県のモックデータ
   const prefectures = [
@@ -71,6 +77,31 @@ export default function OrdinanceSearchPage({ params }: OrdinanceSearchPageProps
     ],
   }
 
+  useEffect(() => {
+    const fetchOrdinances = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('ordinances')
+          .select('*')
+          .eq('prefecture', selectedPrefecture)
+          .order('name')
+
+        if (error) {
+          throw error
+        }
+
+        setOrdinances(data)
+      } catch (err) {
+        console.error('Error fetching ordinances:', err)
+        setError('条例の取得に失敗しました')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchOrdinances()
+  }, [selectedPrefecture])
+
   // 都道府県が変更されたときの処理
   const handlePrefectureChange = (prefecture: string) => {
     setSelectedPrefecture(prefecture);
@@ -79,50 +110,6 @@ export default function OrdinanceSearchPage({ params }: OrdinanceSearchPageProps
       setSelectedCity(cities[prefecture][0]);
     }
   };
-
-  // モックデータ
-  const ordinances: Ordinance[] = [
-    {
-      prefecture: "東京都",
-      category: "都市計画情報",
-      name: "都市計画情報等インターネット提供サービストップ",
-      referenceUrl: "都市計画情報等インターネット提供サービストップ",
-      currentUrl: "都市計画情報等インターネット提供サービストップ",
-      section: "調査"
-    },
-    {
-      prefecture: "東京都",
-      category: "ハザードマップ",
-      name: "洪水ハザードマップ",
-      referenceUrl: "洪水ハザードマップ",
-      currentUrl: "洪水ハザードマップ",
-      section: "調査"
-    },
-    {
-      prefecture: "その他",
-      category: "ハザードマップ",
-      name: "国交省ハザードマップ",
-      referenceUrl: "国交省ハザードマップ",
-      currentUrl: "国交省ハザードマップ",
-      section: "調査"
-    },
-    {
-      prefecture: "東京都",
-      category: "道路台帳",
-      name: "道路について｜東京都都市整備局",
-      referenceUrl: "道路について｜東京都都市整備局",
-      currentUrl: "道路について｜東京都都市整備局",
-      section: "調査"
-    },
-    {
-      prefecture: "東京都",
-      category: "水道台帳",
-      name: "下水道台帳案内｜東京都下水道局",
-      referenceUrl: "下水道台帳案内｜東京都下水道局",
-      currentUrl: "下水道台帳案内｜東京都下水道局",
-      section: "調査"
-    }
-  ]
 
   // セクションごとにデータをグループ化
   const groupedOrdinances = ordinances.reduce((acc, ordinance) => {
@@ -134,29 +121,63 @@ export default function OrdinanceSearchPage({ params }: OrdinanceSearchPageProps
   }, {} as Record<string, Ordinance[]>);
 
   // 条例のステータスを更新
-  const updateOrdinanceStatus = (ordinance: Ordinance, status: "該当" | "非該当") => {
-    setOrdinanceStatuses(prev => ({
-      ...prev,
-      [ordinance.name]: {
-        ...ordinance,
-        status: status
+  const updateOrdinanceStatus = async (ordinance: Ordinance, status: "該当" | "非該当") => {
+    try {
+      const { error } = await supabase
+        .from('project_ordinances')
+        .upsert({
+          project_id: params.id,
+          ordinance_id: ordinance.id,
+          status: status
+        })
+
+      if (error) {
+        throw error
       }
-    }));
+
+      setOrdinanceStatuses(prev => ({
+        ...prev,
+        [ordinance.name]: {
+          ...ordinance,
+          status: status
+        }
+      }));
+    } catch (err) {
+      console.error('Error updating ordinance status:', err)
+      alert('条例のステータス更新に失敗しました')
+    }
   };
 
   // メモを保存
-  const saveNote = () => {
+  const saveNote = async () => {
     if (currentOrdinance) {
-      setOrdinanceStatuses(prev => ({
-        ...prev,
-        [currentOrdinance.name]: {
-          ...currentOrdinance,
-          note: note
+      try {
+        const { error } = await supabase
+          .from('project_ordinances')
+          .upsert({
+            project_id: params.id,
+            ordinance_id: currentOrdinance.id,
+            note: note
+          })
+
+        if (error) {
+          throw error
         }
-      }));
-      setNoteModalOpen(false);
-      setNote("");
-      setCurrentOrdinance(null);
+
+        setOrdinanceStatuses(prev => ({
+          ...prev,
+          [currentOrdinance.name]: {
+            ...currentOrdinance,
+            note: note
+          }
+        }));
+        setNoteModalOpen(false);
+        setNote("");
+        setCurrentOrdinance(null);
+      } catch (err) {
+        console.error('Error saving note:', err)
+        alert('メモの保存に失敗しました')
+      }
     }
   };
 
@@ -166,6 +187,14 @@ export default function OrdinanceSearchPage({ params }: OrdinanceSearchPageProps
     setNote(ordinanceStatuses[ordinance.name]?.note || "");
     setNoteModalOpen(true);
   };
+
+  if (isLoading) {
+    return <Layout><div>Loading...</div></Layout>
+  }
+
+  if (error) {
+    return <Layout><div className="text-red-500">{error}</div></Layout>
+  }
 
   const content = (
     <div className="container mx-auto py-8">
@@ -183,37 +212,39 @@ export default function OrdinanceSearchPage({ params }: OrdinanceSearchPageProps
       <div className="flex gap-4 mb-8">
         <div className="w-1/3">
           <label className="block text-sm font-medium mb-2">都道府県</label>
-          <select
-            value={selectedPrefecture}
-            onChange={(e) => handlePrefectureChange(e.target.value)}
-            className="w-full p-2 border rounded-md"
-          >
-            {prefectures.map((prefecture) => (
-              <option key={prefecture} value={prefecture}>
-                {prefecture}
-              </option>
-            ))}
-          </select>
+          <Select value={selectedPrefecture} onValueChange={handlePrefectureChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="都道府県を選択" />
+            </SelectTrigger>
+            <SelectContent>
+              {prefectures.map((prefecture) => (
+                <SelectItem key={prefecture} value={prefecture}>
+                  {prefecture}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="w-1/3">
           <label className="block text-sm font-medium mb-2">市区町村</label>
-          <select
-            value={selectedCity}
-            onChange={(e) => setSelectedCity(e.target.value)}
-            className="w-full p-2 border rounded-md"
-          >
-            {cities[selectedPrefecture]?.map((city) => (
-              <option key={city} value={city}>
-                {city}
-              </option>
-            ))}
-          </select>
+          <Select value={selectedCity} onValueChange={setSelectedCity}>
+            <SelectTrigger>
+              <SelectValue placeholder="市区町村を選択" />
+            </SelectTrigger>
+            <SelectContent>
+              {cities[selectedPrefecture]?.map((city) => (
+                <SelectItem key={city} value={city}>
+                  {city}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-    <div className="text-gray-600 mb-8">
+      <div className="text-gray-600 mb-8">
         <p>敷地01の住所：東京都千代田区丸の内1-1-1</p>
-    </div>
+      </div>
 
       <div className="space-y-6">
         {Object.entries(groupedOrdinances).map(([section, ordinances]) => (
@@ -251,13 +282,13 @@ export default function OrdinanceSearchPage({ params }: OrdinanceSearchPageProps
                       <TableCell>{ordinance.category}</TableCell>
                       <TableCell className={status === "該当" ? "font-medium" : ""}>{ordinance.name}</TableCell>
                       <TableCell>
-                        <a href={ordinance.referenceUrl} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
-                          {ordinance.referenceUrl}
+                        <a href={ordinance.reference_url || '#'} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
+                          {ordinance.reference_url}
                         </a>
                       </TableCell>
                       <TableCell>
-                        <a href={ordinance.currentUrl} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
-                          {ordinance.currentUrl}
+                        <a href={ordinance.current_url || '#'} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
+                          {ordinance.current_url}
                         </a>
                       </TableCell>
                       <TableCell>

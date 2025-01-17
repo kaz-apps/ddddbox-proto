@@ -1,40 +1,74 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { IconPencil, IconTrash } from '@tabler/icons-react'
-
-type Member = {
-  id: string;
-  name: string;
-  role: '管理者' | 'システム管理者' | '一般ユーザー';
-  email: string;
-}
-
-const mockMembers: Member[] = [
-  { id: '1', name: '松原昌幸', role: 'システム管理者', email: 'matsubara@example.com' },
-  { id: '2', name: '板下和彦', role: 'システム管理者', email: 'itashita@example.com' },
-  { id: '3', name: '新崎健吾', role: 'システム管理者', email: 'arasaki@example.com' },
-  { id: '4', name: '酒田優斗', role: 'システム管理者', email: 'sakata@example.com' },
-  { id: '5', name: '松原昌玲', role: 'システム管理者', email: 'matsura@example.com' },
-  { id: '6', name: '山田太郎', role: 'システム管理者', email: 'yamada@example.com' },
-  { id: '7', name: '佐藤次郎', role: 'システム管理者', email: 'sato@example.com' },
-  { id: '8', name: '田中三郎', role: 'システム管理者', email: 'tanaka@example.com' },
-  { id: '9', name: '鈴木四郎', role: 'システム管理者', email: 'suzuki@example.com' },
-  { id: '10', name: '高橋五郎', role: 'システム管理者', email: 'takahashi@example.com' },
-]
+import { supabase } from '@/lib/supabase'
+import type { Member } from '@/lib/supabase'
 
 export function MemberList() {
-  const [members] = useState<Member[]>(mockMembers)
+  const [members, setMembers] = useState<Member[]>([])
   const [currentPage] = useState(1)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleEdit = (memberId: string) => {
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('members')
+          .select('*')
+          .order('name')
+
+        if (error) {
+          throw error
+        }
+
+        setMembers(data)
+      } catch (err) {
+        console.error('Error fetching members:', err)
+        setError('メンバーの取得に失敗しました')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchMembers()
+  }, [])
+
+  const handleEdit = async (memberId: string) => {
     console.log('Edit member:', memberId)
   }
 
-  const handleDelete = (memberId: string) => {
-    console.log('Delete member:', memberId)
+  const handleDelete = async (memberId: string) => {
+    if (!window.confirm('このメンバーを削除してもよろしいですか？')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('members')
+        .delete()
+        .eq('id', memberId)
+
+      if (error) {
+        throw error
+      }
+
+      setMembers(members.filter(member => member.id !== memberId))
+    } catch (err) {
+      console.error('Error deleting member:', err)
+      alert('メンバーの削除に失敗しました')
+    }
+  }
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div className="text-red-500">{error}</div>
   }
 
   return (
