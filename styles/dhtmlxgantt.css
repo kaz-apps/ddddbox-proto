@@ -1,0 +1,24 @@
+@import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+
+.gantt-container {
+  height: 600px;
+  width: 100%;
+}
+
+/* カスタムスタイル */
+.weekend {
+  background: #f4f7f4;
+}
+
+.today {
+  background: #fff4bc;
+}
+
+.gantt_task_line {
+  border-radius: 20px;
+}
+
+.gantt_task_progress {
+  background: #2196F3;
+  border-radius: 20px;
+}

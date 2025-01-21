@@ -1,7 +1,109 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
+/* Gantt chart styles */
+.gantt-chart {
+  position: relative;
+}
+
+.gantt .grid-background {
+  fill: var(--background);
+}
+
+.gantt .grid-header {
+  fill: var(--secondary);
+  stroke: var(--border);
+}
+
+.gantt .grid-row {
+  fill: var(--background);
+}
+
+.gantt .grid-row:nth-child(even) {
+  fill: var(--secondary);
+}
+
+.gantt .row-line {
+  stroke: var(--border);
+}
+
+.gantt .tick {
+  stroke: var(--border);
+}
+
+.gantt .tick.thick {
+  stroke: var(--border);
+}
+
+.gantt .today-highlight {
+  fill: var(--primary);
+  opacity: 0.1;
+}
+
+.gantt .arrow {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1.4;
+}
+
+.gantt .bar {
+  fill: var(--primary);
+  stroke: none;
+  transition: all 0.3s ease;
+}
+
+/* Custom task status styles */
+.bar-completed {
+  fill: rgb(34, 197, 94) !important;
+}
+
+.bar-progress {
+  fill: rgb(59, 130, 246) !important;
+}
+
+.bar-not-started {
+  fill: rgb(156, 163, 175) !important;
+}
+
+/* Override default styles */
+.gantt .bar-wrapper:hover .bar {
+  fill: currentColor !important;
+  filter: brightness(0.9);
+}
+
+.gantt .bar-wrapper.active .bar {
+  fill: currentColor !important;
+  filter: brightness(0.8);
+}
+
+/* Scroll control */
+.gantt-container {
+  scroll-behavior: auto !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gantt-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.gantt-container::-webkit-scrollbar-track {
+  background: var(--secondary);
+  border-radius: 4px;
+}
+
+.gantt-container::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+/* SVG styles */
+.gantt svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -65,7 +167,7 @@
     --ring: 212.7 26.8% 83.9%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-[hsl(var(--border))];
@@ -74,4 +176,3 @@
     @apply bg-background text-foreground;
   }
 }
-

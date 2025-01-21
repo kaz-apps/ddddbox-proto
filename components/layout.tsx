@@ -1,59 +1,73 @@
-"use client"
+"use client";
 
-import { IconBell, IconChevronLeft, IconChevronRight, IconSettings, IconUsers, IconFolder, IconDatabase, IconChevronDown } from '@tabler/icons-react'
-import Link from "next/link"
-import { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
-import { ProjectDetailsForm } from './project-details-form'
-import { Settings } from './settings'
-import { motion } from "framer-motion"
-import { supabase } from '@/lib/supabase'
-import type { Project } from '@/lib/supabase'
+import {
+  IconBell,
+  IconChevronLeft,
+  IconChevronRight,
+  IconSettings,
+  IconUsers,
+  IconFolder,
+  IconDatabase,
+  IconChevronDown,
+  IconCalendar,
+} from "@tabler/icons-react";
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { ProjectDetailsForm } from "./project-details-form";
+import { Settings } from "./settings";
+import { motion } from "framer-motion";
+import { supabase } from "@/lib/supabase";
+import type { Project } from "@/lib/supabase";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const [isCodeNameDisplayed, setIsCodeNameDisplayed] = useState(false)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [expandedProjects, setExpandedProjects] = useState<string[]>([])
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [projects, setProjects] = useState<Project[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const pathname = usePathname()
+  const [isCodeNameDisplayed, setIsCodeNameDisplayed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [expandedProjects, setExpandedProjects] = useState<string[]>([]);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .order('project_no')
+          .from("projects")
+          .select("*")
+          .order("project_no");
 
         if (error) {
-          throw error
+          throw error;
         }
 
-        setProjects(data)
+        setProjects(data);
       } catch (err) {
-        console.error('Error fetching projects:', err)
+        console.error("Error fetching projects:", err);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchProjects()
-  }, [])
+    fetchProjects();
+  }, []);
 
   const toggleProject = (projectId: string) => {
-    setExpandedProjects(prev =>
+    setExpandedProjects((prev) =>
       prev.includes(projectId)
-        ? prev.filter(id => id !== projectId)
+        ? prev.filter((id) => id !== projectId)
         : [...prev, projectId]
-    )
-  }
+    );
+  };
 
   return (
     <div className="flex h-screen bg-background">
       {/* Left Sidebar */}
-      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} bg-[#8BA989] text-white p-4 flex flex-col transition-all duration-300 relative rounded-r-[40px]`}>
+      <div
+        className={`${
+          isSidebarCollapsed ? "w-16" : "w-64"
+        } bg-[#8BA989] text-white p-4 flex flex-col transition-all duration-300 relative rounded-r-[40px]`}
+      >
         {isSidebarCollapsed && (
           <button
             onClick={() => setIsSidebarCollapsed(false)}
@@ -71,11 +85,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             alt="Organization Logo"
             className="w-8 h-8 bg-white rounded-md object-cover"
           />
-          {!isSidebarCollapsed && <div className="flex-1">AMD建築設計事務所</div>}
+          {!isSidebarCollapsed && (
+            <div className="flex-1">AMD建築設計事務所</div>
+          )}
           <IconChevronLeft
-            className={`w-5 h-5 cursor-pointer transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 cursor-pointer transition-transform duration-300 ${
+              isSidebarCollapsed ? "rotate-180" : ""
+            }`}
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={
+              isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+            }
           />
         </div>
 
@@ -124,7 +144,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   >
                     <IconChevronDown
                       className={`w-4 h-4 transition-transform ${
-                        expandedProjects.includes(project.id) ? 'rotate-0' : '-rotate-90'
+                        expandedProjects.includes(project.id)
+                          ? "rotate-0"
+                          : "-rotate-90"
                       }`}
                     />
                     <IconFolder className="w-4 h-4" />
@@ -133,7 +155,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{
-                      height: expandedProjects.includes(project.id) ? "auto" : 0,
+                      height: expandedProjects.includes(project.id)
+                        ? "auto"
+                        : 0,
                       opacity: expandedProjects.includes(project.id) ? 1 : 0,
                     }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
@@ -147,6 +171,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         >
                           <IconFolder className="w-4 h-4" />
                           <span>建物カルテ</span>
+                        </Link>
+                        <Link
+                          href={`/${project.id}/schedule`}
+                          className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-md text-sm"
+                        >
+                          <IconCalendar className="w-4 h-4" />
+                          <span>スケジュール管理</span>
                         </Link>
                         <Link
                           href={`/project-details/${project.id}/ordinance-search`}
@@ -169,19 +200,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 bg-background overflow-y-auto">
         <header className="border-b p-4 flex items-center justify-between">
           <h1 className="text-lg font-medium">
-            {pathname.includes('ordinance-search') ? '条例自動検索' :
-             pathname.includes('project-details') ? 'プロジェクト詳細' :
-             'プロジェクト一覧'}
+            {pathname.includes("ordinance-search")
+              ? "条例自動検索"
+              : pathname.includes("project-details")
+              ? "プロジェクト詳細"
+              : "プロジェクト一覧"}
           </h1>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsCodeNameDisplayed(!isCodeNameDisplayed)}
-                className={`w-12 h-6 ${isCodeNameDisplayed ? 'bg-blue-500' : 'bg-gray-200'} rounded-full relative transition-colors duration-200 ease-in-out`}
+                className={`w-12 h-6 ${
+                  isCodeNameDisplayed ? "bg-blue-500" : "bg-gray-200"
+                } rounded-full relative transition-colors duration-200 ease-in-out`}
               >
                 <div
                   className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out ${
-                    isCodeNameDisplayed ? 'translate-x-6' : ''
+                    isCodeNameDisplayed ? "translate-x-6" : ""
                   }`}
                 />
               </button>
@@ -191,17 +226,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main className="p-4">
-          <div className="max-w-6xl mx-auto space-y-6">
-            {children}
-          </div>
+          <div className="mx-auto space-y-6">{children}</div>
         </main>
       </div>
 
       {/* Settings Modal */}
-      {isSettingsOpen && (
-        <Settings onClose={() => setIsSettingsOpen(false)} />
-      )}
+      {isSettingsOpen && <Settings onClose={() => setIsSettingsOpen(false)} />}
     </div>
-  )
+  );
 }
-
