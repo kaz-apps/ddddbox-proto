@@ -1,140 +1,261 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { Task } from '@/types/schedule'
-import { gantt } from 'dhtmlx-gantt'
-import '@/styles/dhtmlxgantt.css'
-
-// DHTMLXガントチャートのタスク型定義
-interface GanttTaskData {
-  id: string
-  text: string
-  start_date: Date
-  end_date: Date
-  progress: number
-  parent?: string
-  status?: string
-  open?: boolean
-}
-
-interface GanttLinkData {
-  id: string
-  source: string
-  target: string
-  type: string
-}
+import { Task, Stage } from '@/types/schedule'
+import { format, addMonths } from 'date-fns'
+import 'dhtmlx-gantt/codebase/dhtmlxgantt.css'
 
 interface GanttChartProps {
-  tasks: Task[]
-  onTaskClick?: (task: Task) => void
-  onTaskChange?: (task: Task, start: Date, end: Date) => void
+  tasks: Task[];
+  stages: Stage[];
 }
 
-export function GanttChart({
-  tasks,
-  onTaskClick,
-  onTaskChange
-}: GanttChartProps) {
-  const ganttContainer = useRef<HTMLDivElement>(null)
+// サンプルデータ
+const sampleData = {
+  stages: [
+    {
+      id: 'stage_1',
+      title: '実施設計1',
+      startDate: '2024-01-01',
+      endDate: '2024-01-31',
+      status: 'not_started'
+    },
+    {
+      id: 'stage_2',
+      title: '実施設計2',
+      startDate: '2024-01-01',
+      endDate: '2024-01-31',
+      status: 'not_started'
+    }
+  ],
+  tasks: [
+    {
+      id: 'task_1',
+      title: 'タスク1',
+      startDate: '2024-01-01',
+      endDate: '2024-01-31',
+      status: 'not_started'
+    },
+    {
+      id: 'task_2',
+      title: 'タスク2',
+      startDate: '2024-01-01',
+      endDate: '2024-01-31',
+      status: 'not_started'
+    }
+  ]
+};
+
+function GanttChartContent({ tasks = sampleData.tasks, stages = sampleData.stages }: GanttChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!ganttContainer.current) return
+    const initGantt = async () => {
+      try {
+        const gantt = (await import('dhtmlx-gantt')).default;
 
-    // 日付を安全に変換する関数
-    const toDate = (date: Date | string): Date => {
-      if (date instanceof Date) return date
-      return new Date(date)
-    }
+        if (!containerRef.current) return;
 
-    // ガントチャートの設定
-    gantt.config.date_format = '%Y-%m-%d'
-    gantt.config.drag_progress = false
-    gantt.config.drag_resize = true
-    gantt.config.drag_move = true
-    gantt.config.drag_links = true
-    gantt.config.row_height = 40
-    gantt.config.min_column_width = 40
+        // 基本的な設定
+        gantt.config.date_format = '%Y-%m-%d';
+        gantt.config.min_column_width = 100;
+        gantt.config.grid_width = 520; // 全列の合計
+        gantt.config.row_height = 40; // 行の高さを少し増やす
 
-    // 週末の背景色を変更
-    gantt.templates.timeline_cell_class = (date: any) => {
-      const d = toDate(date)
-      if (d.getDay() === 0 || d.getDay() === 6) return 'weekend'
-      return ''
-    }
+        // グリッド列の設定
+        gantt.config.columns = [
+          { 
+            name: "group_type", 
+            label: "グループ", 
+            width: 120,
+            template: (task) => {
+              if (task.type === 'stage') return '設計ステージ';
+              if (task.type === 'task') return 'タスク';
+              return '';
+            }
+          },
+          { 
+            name: "text", 
+            label: "名前", 
+            width: 200
+          },
+          { 
+            name: "start_date", 
+            label: "開始日", 
+            align: "center", 
+            width: 100,
+            template: (task) => {
+              if (!task.start_date) return '';
+              const date = new Date(task.start_date);
+              return format(date, 'yyyy/MM/dd');
+            }
+          },
+          { 
+            name: "end_date", 
+            label: "終了日", 
+            align: "center", 
+            width: 100,
+            template: (task) => {
+              if (!task.end_date) return '';
+              const date = new Date(task.end_date);
+              return format(date, 'yyyy/MM/dd');
+            }
+          }
+        ];
 
-    // 今日の日付の背景色を変更
-    const today = new Date()
-    const todayStr = today.toDateString()
-    gantt.templates.timeline_cell_class = (date: any) => {
-      const d = toDate(date)
-      if (d.toDateString() === todayStr) return 'today'
-      return ''
-    }
+        // タスクタイプの設定
+        gantt.config.types = {
+          task: 'task',
+          stage: 'stage'
+        };
 
-    // タスクの進捗状態に応じた色を設定
-    gantt.templates.task_class = (_start: Date, _end: Date, task: GanttTaskData) => {
-      switch (task.status) {
-        case 'completed':
-          return 'task-completed'
-        case 'in_progress':
-          return 'task-progress'
-        default:
-          return 'task-not-started'
+        // グリッドヘッダーのスタイル
+        gantt.templates.grid_header_class = (columnName, column) => {
+          return 'gantt-header';
+        };
+
+        // タスクの行スタイル
+        gantt.templates.grid_row_class = (start, end, task) => {
+          return task.type === 'stage' ? 'gantt-stage-row' : 'gantt-task-row';
+        };
+
+        // タスクバーのスタイル
+        gantt.templates.task_class = (start, end, task) => {
+          return task.type === 'stage' ? 'gantt-stage-bar' : 'gantt-task-bar';
+        };
+
+        // タイムラインのスケール設定
+        gantt.config.scale_height = 30;
+        gantt.config.subscales = [];
+        
+        // 日付フォーマットの設定
+        gantt.templates.date_grid = (date) => {
+          return format(date, 'yyyy/MM/dd');
+        };
+
+        // 初期化
+        gantt.init(containerRef.current);
+
+        // データの読み込み
+        const formattedData = [];
+
+        // ステージの追加
+        if (stages?.length > 0) {
+          formattedData.push(...stages.map(stage => ({
+            id: stage.id,
+            text: stage.title,
+            start_date: stage.startDate,
+            end_date: stage.endDate,
+            type: 'stage',
+            progress: 0,
+            open: true,
+            readonly: true
+          })));
+        }
+
+        // タスクの追加
+        if (tasks?.length > 0) {
+          formattedData.push(...tasks.map(task => ({
+            id: task.id,
+            text: task.title,
+            start_date: task.startDate,
+            end_date: task.endDate,
+            progress: task.status === 'completed' ? 1 : task.status === 'in_progress' ? 0.5 : 0,
+            type: 'task'
+          })));
+        }
+
+        gantt.parse({ data: formattedData });
+
+        // カスタムCSSの追加
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+          .gantt-header {
+            background-color: #f3f4f6;
+            font-weight: bold;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 8px 12px;
+          }
+          .gantt-stage-row, .gantt-task-row {
+            background-color: white;
+          }
+          .gantt-stage-bar {
+            background-color: #94a3b8;
+            border-radius: 4px;
+            border: 1px solid #64748b;
+          }
+          .gantt-stage-bar .gantt-task-content {
+            color: #1e293b;
+            font-weight: bold;
+          }
+          .gantt-task-bar {
+            background-color: #60a5fa;
+            border-radius: 4px;
+            border: 1px solid #3b82f6;
+          }
+          .gantt-task-bar .gantt-task-content {
+            color: white;
+          }
+          .gantt_cell {
+            border-right: 1px solid #e5e7eb;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            white-space: normal;
+            line-height: 1.4;
+            overflow: visible;
+          }
+          .gantt_grid_head_cell {
+            border-right: 1px solid #e5e7eb;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 8px 12px;
+          }
+          .gantt_grid_data .gantt_cell {
+            padding: 8px 12px;
+            font-size: 13px;
+          }
+          .gantt_grid_data .gantt_cell[data-column-name="group_type"] {
+            color: #374151;
+          }
+          .gantt_grid {
+            border-right: 1px solid #e5e7eb;
+          }
+          .gantt_grid_scale {
+            font-size: 13px;
+            line-height: 1.4;
+          }
+          .gantt_scale_cell {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          }
+        `;
+        document.head.appendChild(styleElement);
+
+      } catch (error) {
+        console.error('Failed to initialize gantt chart:', error);
       }
-    }
+    };
 
-    // イベントハンドラの設定
-    gantt.attachEvent('onTaskClick', (id: string) => {
-      const task = tasks.find(t => t.id === id)
-      if (task && onTaskClick) {
-        onTaskClick(task)
-      }
-      return true
-    })
-
-    gantt.attachEvent('onAfterTaskDrag', (id: string) => {
-      const task = tasks.find(t => t.id === id)
-      if (task && onTaskChange) {
-        const ganttTask = gantt.getTask(id) as GanttTaskData
-        onTaskChange(task, new Date(ganttTask.start_date), new Date(ganttTask.end_date))
-      }
-    })
-
-    // ガントチャートの初期化
-    gantt.init(ganttContainer.current)
-
-    // データの設定
-    const ganttTasks = {
-      data: tasks.map(task => ({
-        id: task.id,
-        text: task.title,
-        start_date: toDate(task.startDate),
-        end_date: toDate(task.endDate),
-        progress: task.status === 'completed' ? 1 : task.status === 'in_progress' ? 0.5 : 0,
-        parent: task.parentId,
-        status: task.status,
-        open: task.isExpanded
-      })),
-      links: tasks
-        .filter(task => task.dependencies && task.dependencies.length > 0)
-        .flatMap(task => 
-          task.dependencies!.map(depId => ({
-            id: `${depId}-${task.id}`,
-            source: depId,
-            target: task.id,
-            type: '0'
-          }))
-        )
-    }
-
-    gantt.parse(ganttTasks)
+    initGantt();
 
     return () => {
-      gantt.clearAll()
-    }
-  }, [tasks, onTaskClick, onTaskChange])
+      const element = containerRef.current;
+      if (element) {
+        while (element.firstChild) {
+          element.removeChild(element.firstChild);
+        }
+      }
+    };
+  }, [tasks, stages]);
 
   return (
-    <div className="gantt-container" ref={ganttContainer} />
-  )
+    <div ref={containerRef} style={{ width: '100%', height: '500px' }} />
+  );
 }
+
+export function GanttChart(props: GanttChartProps) {
+  return (
+    <div className="w-full h-full">
+      <GanttChartContent {...props} />
+    </div>
+  );
+}
+
+export default GanttChart;

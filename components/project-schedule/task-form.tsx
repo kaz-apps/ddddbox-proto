@@ -38,8 +38,8 @@ export function TaskForm({
   const [formData, setFormData] = useState({
     title: task?.title || '',
     description: task?.description || '',
-    startDate: task?.startDate ? task.startDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    endDate: task?.endDate ? task.endDate.toISOString().split('T')[0] : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    startDate: task?.startDate ? (task.startDate instanceof Date ? task.startDate : new Date(task.startDate)).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    endDate: task?.endDate ? (task.endDate instanceof Date ? task.endDate : new Date(task.endDate)).toISOString().split('T')[0] : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     status: (task?.status || 'not_started') as TaskStatus,
     dependencies: task?.dependencies || []
   })
