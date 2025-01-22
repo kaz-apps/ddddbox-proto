@@ -188,6 +188,103 @@ function GanttChartContent({
           finish_to_start: "0",
         };
 
+        // タスクの制約設定
+        gantt.attachEvent(
+          "onBeforeTaskDrag",
+          (id: string, mode: string, e: any) => {
+            const task = gantt.getTask(id);
+            // ステージの場合はドラッグを禁止
+            if (task.type === "stage") {
+              return false;
+            }
+            return true;
+          }
+        );
+
+        // デフォルトの編集モーダルを無効化
+        (gantt.config as any).lightbox = { sections: [] };
+        (gantt.config as any).show_lightbox = false;
+        (gantt.config as any).details_on_dblclick = false;
+        (gantt.config as any).details_on_create = false;
+        (gantt.config as any).quick_info_detached = false;
+
+        // グリッド列の設定
+        gantt.config.columns = [
+          {
+            name: "group_type",
+            label: "グループ",
+            width: 120,
+            template: (task: GanttTask) => {
+              if (task.type === "stage") return "設計ステージ";
+              if (task.type === "task") return "タスク";
+              return "";
+            },
+          } as any,
+          {
+            name: "text",
+            label: "名前",
+            tree: true,
+            width: 200,
+            resize: true,
+          },
+          {
+            name: "start_date",
+            label: "開始日",
+            align: "center",
+            width: 100,
+            template: (task: GanttTask) => {
+              if (!task.start_date) return "";
+              const date = new Date(task.start_date);
+              return format(date, "yyyy/MM/dd");
+            },
+          } as any,
+          {
+            name: "end_date",
+            label: "終了日",
+            align: "center",
+            width: 100,
+            template: (task: GanttTask) => {
+              if (!task.end_date) return "";
+              const date = new Date(task.end_date);
+              return format(date, "yyyy/MM/dd");
+            },
+          } as any,
+          {
+            name: "status",
+            label: "ステータス",
+            align: "center",
+            width: 100,
+            resize: true,
+            template: (task: GanttTask) => {
+              switch (task.status) {
+                case "not_started":
+                  return "未着手";
+                case "in_progress":
+                  return "進行中";
+                case "completed":
+                  return "完了";
+                default:
+                  return "";
+              }
+            },
+          },
+        ];
+
+        // タスクタイプの設定
+        (gantt.config as any).types = {
+          task: "task",
+          stage: "stage",
+        };
+
+        // スタイル設定
+        (gantt as any).templates.task_class = (start: Date, end: Date, task: GanttTask) => {
+          return task.type === "stage" ? "gantt-stage-bar" : "gantt-task-bar";
+        };
+
+        (gantt as any).templates.grid_row_class = (start: Date, end: Date, task: GanttTask) => {
+          return task.type === "stage" ? "gantt-stage-row" : "gantt-task-row";
+        };
+
         // データの設定
         const formattedData: { data: GanttTask[]; links: Link[] } = {
           data: [],
@@ -244,15 +341,6 @@ function GanttChartContent({
         (gantt.config as any).start_date = minDate;
         (gantt.config as any).end_date = maxDate;
 
-        // スタイル設定
-        (gantt as any).templates.task_class = (start: Date, end: Date, task: GanttTask) => {
-          return task.type === "stage" ? "gantt-stage-bar" : "gantt-task-bar";
-        };
-
-        (gantt as any).templates.grid_row_class = (start: Date, end: Date, task: GanttTask) => {
-          return task.type === "stage" ? "gantt-stage-row" : "gantt-task-row";
-        };
-
         // ganttの初期化とデータの設定
         gantt.init(containerRef.current);
         gantt.clearAll();
@@ -272,7 +360,6 @@ function GanttChartContent({
           }
           return false;
         });
-
       } catch (error) {
         console.error("Failed to initialize gantt chart:", error);
       }
