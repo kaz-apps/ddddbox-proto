@@ -148,7 +148,9 @@ export default function SchedulePage() {
   };
 
   const handleTaskClick = (task: Task) => {
+    // クリックでも編集モーダルを表示
     setSelectedTask(task);
+    setIsTaskDialogOpen(true);
   };
 
   const handleStageClick = (stage: Stage) => {
