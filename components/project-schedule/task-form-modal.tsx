@@ -1,7 +1,7 @@
 'use client';
 
-import { format } from "date-fns";
-import { GanttTask } from "./types";
+import { format, parseISO } from "date-fns";
+import { GanttTask } from "@/types/schedule";
 import { FormEvent, useRef } from "react";
 
 interface TaskFormModalProps {
@@ -9,9 +9,10 @@ interface TaskFormModalProps {
   onClose: () => void;
   task?: GanttTask;
   onSubmit: (task: GanttTask) => void;
+  availableTasks?: GanttTask[];
 }
 
-export function TaskFormModal({ isOpen, onClose, task, onSubmit }: TaskFormModalProps) {
+export function TaskFormModal({ isOpen, onClose, task, onSubmit, availableTasks = [] }: TaskFormModalProps) {
   if (!isOpen) return null;
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -21,6 +22,7 @@ export function TaskFormModal({ isOpen, onClose, task, onSubmit }: TaskFormModal
     if (!formRef.current) return;
 
     const formData = new FormData(formRef.current);
+    const parentValue = formData.get("parent") as string;
     const updatedTask: GanttTask = {
       id: task?.id || Math.random().toString(36).substr(2, 9),
       text: formData.get("title") as string,
@@ -28,11 +30,18 @@ export function TaskFormModal({ isOpen, onClose, task, onSubmit }: TaskFormModal
       start_date: formData.get("start_date") as string,
       end_date: formData.get("end_date") as string,
       status: formData.get("status") as "not_started" | "in_progress" | "completed",
-      progress: 0,
+      progress: task?.progress || 0,
       type: task?.type || "task",
+      parent: parentValue || "0",
+      color: task?.color,
+      layer: task?.layer,
+      open: task?.open ?? true,
+      readonly: task?.readonly ?? false,
+      parents: task?.parents || [],
     };
 
     onSubmit(updatedTask);
+    onClose();
   };
 
   return (
@@ -76,11 +85,7 @@ export function TaskFormModal({ isOpen, onClose, task, onSubmit }: TaskFormModal
                 type="date"
                 name="start_date"
                 className="w-full px-3 py-2 border rounded-md"
-                defaultValue={
-                  task
-                    ? format(new Date(task.start_date), "yyyy-MM-dd")
-                    : format(new Date(), "yyyy-MM-dd")
-                }
+                defaultValue={task?.start_date ? format(parseISO(task.start_date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")}
                 required
               />
             </div>
@@ -90,11 +95,7 @@ export function TaskFormModal({ isOpen, onClose, task, onSubmit }: TaskFormModal
                 type="date"
                 name="end_date"
                 className="w-full px-3 py-2 border rounded-md"
-                defaultValue={
-                  task
-                    ? format(new Date(task.end_date), "yyyy-MM-dd")
-                    : format(new Date(), "yyyy-MM-dd")
-                }
+                defaultValue={task?.end_date ? format(parseISO(task.end_date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")}
                 required
               />
             </div>
@@ -110,6 +111,23 @@ export function TaskFormModal({ isOpen, onClose, task, onSubmit }: TaskFormModal
               <option value="not_started">未着手</option>
               <option value="in_progress">進行中</option>
               <option value="completed">完了</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm mb-2">依存タスク</label>
+            <select
+              name="parent"
+              className="w-full px-3 py-2 border rounded-md"
+              defaultValue={task?.parent || ""}
+            >
+              <option value="">なし</option>
+              {availableTasks
+                .filter(t => t.id !== task?.id)
+                .map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.text}
+                  </option>
+                ))}
             </select>
           </div>
           <div className="mt-6 flex justify-end gap-3">

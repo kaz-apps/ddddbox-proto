@@ -30,15 +30,16 @@ export interface GanttTask {
   text: string;
   start_date: string;
   end_date: string;
+  type: 'task' | 'stage';
+  progress: number;
+  parent: string;
   description?: string;
   status?: 'not_started' | 'in_progress' | 'completed';
-  type?: 'task' | 'stage';
-  progress: number;
-  parent?: string;
   color?: string;
   layer?: number;
   open?: boolean;
   readonly?: boolean;
+  parents?: string[];
 }
 
 export interface GanttLink {
