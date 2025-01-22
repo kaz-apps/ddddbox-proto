@@ -201,6 +201,81 @@ function GanttChartContent({
           }
         );
 
+        // タスクの変更イベント
+        gantt.attachEvent(
+          "onAfterTaskDrag",
+          (id: string, mode: string, e: any) => {
+            const task = gantt.getTask(id);
+            if (task.type === "stage" && onStageChange) {
+              const stage: Stage = {
+                id: task.id,
+                title: task.text,
+                startDate: task.start_date,
+                endDate: task.end_date,
+                color: task.color,
+                layer: task.layer,
+              };
+              onStageChange(stage, new Date(task.start_date), new Date(task.end_date));
+            } else if (task.type === "task" && onTaskChange) {
+              const updatedTask: Task = {
+                id: task.id,
+                title: task.text,
+                startDate: task.start_date,
+                endDate: task.end_date,
+                description: task.description,
+                status: task.status,
+                parentId: task.parent,
+              };
+              onTaskChange(updatedTask, new Date(task.start_date), new Date(task.end_date));
+            }
+          }
+        );
+
+        // データの更新イベント
+        gantt.attachEvent("onTaskClick", (id: string, e: any) => {
+          const task = gantt.getTask(id);
+          if (task.type === "stage" && onStageClick) {
+            const stage: Stage = {
+              id: task.id,
+              title: task.text,
+              startDate: task.start_date,
+              endDate: task.end_date,
+              color: task.color,
+              layer: task.layer,
+            };
+            onStageClick(stage);
+          } else if (task.type === "task" && onTaskClick) {
+            const clickedTask: Task = {
+              id: task.id,
+              title: task.text,
+              startDate: task.start_date,
+              endDate: task.end_date,
+              description: task.description,
+              status: task.status,
+              parentId: task.parent,
+            };
+            onTaskClick(clickedTask);
+          }
+          return false;
+        });
+
+        gantt.attachEvent("onTaskDblClick", (id: string, e: any) => {
+          const task = gantt.getTask(id);
+          if (task.type === "task" && onTaskEdit) {
+            const editTask: Task = {
+              id: task.id,
+              title: task.text,
+              startDate: task.start_date,
+              endDate: task.end_date,
+              description: task.description,
+              status: task.status,
+              parentId: task.parent,
+            };
+            onTaskEdit(editTask);
+          }
+          return false;
+        });
+
         // デフォルトの編集モーダルを無効化
         (gantt.config as any).lightbox = { sections: [] };
         (gantt.config as any).show_lightbox = false;
@@ -301,7 +376,7 @@ function GanttChartContent({
             type: "stage",
             progress: 0,
             open: true,
-            readonly: true,
+            readonly: false,  // ステージの編集を許可
             color: stage.color,
             layer: stage.layer,
           }))
@@ -349,14 +424,47 @@ function GanttChartContent({
         // タスクのダブルクリックとクリックの処理
         gantt.attachEvent("onTaskDblClick", (id: string, e: any) => {
           const task = gantt.getTask(id);
-          onTaskEdit(task);
+          // タスクの場合のみ編集モーダルを表示
+          if (task.type === "task" && onTaskEdit) {
+            const editTask: Task = {
+              id: task.id,
+              title: task.text,
+              startDate: task.start_date,
+              endDate: task.end_date,
+              description: task.description,
+              status: task.status,
+              parentId: task.parent,
+            };
+            onTaskEdit(editTask);
+          }
           return false;
         });
 
         gantt.attachEvent("onTaskClick", (id: string, e: any) => {
           const task = gantt.getTask(id);
-          if (onTaskClick) {
-            onTaskClick(task);
+          if (task.type === "stage" && onStageClick) {
+            // ステージの場合はステージ編集モーダルを表示
+            const stage: Stage = {
+              id: task.id,
+              title: task.text,
+              startDate: task.start_date,
+              endDate: task.end_date,
+              color: task.color,
+              layer: task.layer,
+            };
+            onStageClick(stage);
+          } else if (task.type === "task" && onTaskClick) {
+            // タスクの場合はタスク選択のみ
+            const clickedTask: Task = {
+              id: task.id,
+              title: task.text,
+              startDate: task.start_date,
+              endDate: task.end_date,
+              description: task.description,
+              status: task.status,
+              parentId: task.parent,
+            };
+            onTaskClick(clickedTask);
           }
           return false;
         });
