@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Task, Stage } from "@/types/schedule";
 import { format } from "date-fns";
 import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
@@ -21,6 +21,8 @@ interface GanttTask {
   readonly?: boolean;
   open?: boolean;
 }
+
+type ScaleType = "month" | "day";
 
 // サンプルデータ
 const sampleData = {
@@ -85,11 +87,38 @@ export function GanttChart() {
 
 function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState<ScaleType>("month");
+  const [ganttInstance, setGanttInstance] = useState<any>(null);
+
+  // スケール設定を更新する関数
+  const updateScale = (gantt: any, newScale: ScaleType) => {
+    if (newScale === "month") {
+      gantt.config.scale_unit = "month";
+      gantt.config.date_scale = "%Y年%m月";
+      gantt.config.subscales = [];
+    } else {
+      gantt.config.scale_unit = "day";
+      gantt.config.date_scale = "%d";
+      gantt.config.subscales = [
+        { unit: "month", step: 1, date: "%Y年%m月" }
+      ];
+    }
+    gantt.render();
+  };
+
+  // スケール切り替えハンドラー
+  const handleScaleChange = (newScale: ScaleType) => {
+    setScale(newScale);
+    if (ganttInstance) {
+      updateScale(ganttInstance, newScale);
+    }
+  };
 
   useEffect(() => {
     const initGantt = async () => {
       try {
         const gantt = (await import("dhtmlx-gantt")).default;
+        setGanttInstance(gantt);
 
         if (!containerRef.current) return;
 
@@ -99,11 +128,21 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
         (gantt.config as any).grid_width = 520;
         gantt.config.row_height = 40;
 
-        // ドラッグ＆ドロップの無効化
-        gantt.config.drag_progress = false;
-        gantt.config.drag_resize = false;
-        gantt.config.drag_move = false;
-        gantt.config.drag_links = false;
+        // ドラッグ＆ドロップの設定
+        gantt.config.drag_progress = false; // 進捗バーのドラッグは無効
+        gantt.config.drag_resize = true;   // タスクのリサイズを有効
+        gantt.config.drag_move = true;     // タスクの移動を有効
+        gantt.config.drag_links = false;   // リンクの作成は無効
+
+        // タスクの制約設定
+        gantt.attachEvent("onBeforeTaskDrag", (id: string, mode: string, e: any) => {
+          const task = gantt.getTask(id);
+          // ステージの場合はドラッグを禁止
+          if (task.type === "stage") {
+            return false;
+          }
+          return true;
+        });
 
         // グリッド列の設定
         gantt.config.columns = [
@@ -156,8 +195,13 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
         // タイムラインのスケール設定
         gantt.config.scale_height = 30;
         (gantt.config as any).subscales = [];
-        (gantt.config as any).scale_unit = "month";
-        (gantt.config as any).date_scale = "%Y年%m月";
+        (gantt.config as any).scale_unit = scale;
+        (gantt.config as any).date_scale = scale === "month" ? "%Y年%m月" : "%d";
+        if (scale === "day") {
+          (gantt.config as any).subscales = [
+            { unit: "month", step: 1, date: "%Y年%m月" }
+          ];
+        }
         (gantt.config as any).start_date = new Date("2025-01-01");
         (gantt.config as any).end_date = new Date("2025-04-30");
 
@@ -320,9 +364,35 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
         }
       }
     };
-  }, [tasks, stages]);
+  }, [tasks, stages, scale]);
 
-  return <div ref={containerRef} style={{ width: "100%", height: "500px" }} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-2">
+        <button
+          className={`px-4 py-2 rounded ${
+            scale === "month"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-200 text-gray-700"
+          }`}
+          onClick={() => handleScaleChange("month")}
+        >
+          月表示
+        </button>
+        <button
+          className={`px-4 py-2 rounded ${
+            scale === "day"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-200 text-gray-700"
+          }`}
+          onClick={() => handleScaleChange("day")}
+        >
+          日表示
+        </button>
+      </div>
+      <div ref={containerRef} style={{ width: "100%", height: "500px" }} />
+    </div>
+  );
 }
 
 export default GanttChart;
