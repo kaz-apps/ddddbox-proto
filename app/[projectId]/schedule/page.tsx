@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { GanttChart } from '@/components/project-schedule/gantt-chart'
-import { Task, Stage } from '@/types/schedule'
+import { Task, Stage, Link } from '@/types/schedule'
 import { useToast } from '@/components/ui/use-toast'
 import { TaskForm } from '@/components/project-schedule/task-form'
 import { StageForm } from '@/components/project-schedule/stage-form'
@@ -60,12 +60,18 @@ const sampleData = {
       status: "not_started" as const,
     },
   ] as Task[],
+  // タスク間の依存関係を定義
+  links: [
+    { id: 1, source: "task_1", target: "task_2", type: "0" },  // task_1 -> task_2
+    { id: 2, source: "task_2", target: "task_3", type: "0" },  // task_2 -> task_3
+  ],
 };
 
 export default function SchedulePage() {
   const { toast } = useToast()
   const [tasks, setTasks] = useState<Task[]>(sampleData.tasks)
   const [stages, setStages] = useState<Stage[]>(sampleData.stages)
+  const [links, setLinks] = useState<Link[]>(sampleData.links)
   const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined)
   const [selectedStage, setSelectedStage] = useState<Stage | undefined>(undefined)
   const [parentTask, setParentTask] = useState<Task | undefined>(undefined)
@@ -178,6 +184,7 @@ export default function SchedulePage() {
         <GanttChart
           tasks={tasks}
           stages={stages}
+          links={links}
           onTaskEdit={handleTaskEdit}
           onTaskClick={handleTaskClick}
           onTaskChange={handleTaskChange}

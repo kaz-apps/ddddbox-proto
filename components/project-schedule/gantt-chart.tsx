@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from "react";
-import { Task, Stage } from "@/types/schedule";
+import { Task, Stage, Link } from "@/types/schedule";
 import { format } from "date-fns";
 import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
 import gantt from "dhtmlx-gantt";
@@ -58,11 +58,26 @@ const sampleData = {
       status: "not_started" as const,
     },
   ] as Task[],
+  links: [
+    {
+      id: "link_1",
+      source: "task_1",
+      target: "task_2",
+      type: "finish_to_start",
+    },
+    {
+      id: "link_2",
+      source: "task_2",
+      target: "task_3",
+      type: "finish_to_start",
+    },
+  ] as Link[],
 };
 
 interface GanttChartProps {
   tasks?: Task[];
   stages?: Stage[];
+  links?: Link[];
   onTaskEdit?: (task: Task) => void;
   onTaskClick?: (task: Task) => void;
   onTaskChange?: (task: Task, start: Date, end: Date) => void;
@@ -75,6 +90,7 @@ type ScaleType = "month" | "day";
 export function GanttChart({
   tasks = sampleData.tasks,
   stages = sampleData.stages,
+  links = sampleData.links,
   onTaskEdit,
   onTaskClick,
   onTaskChange,
@@ -115,6 +131,7 @@ export function GanttChart({
       <GanttChartContent
         tasks={tasks}
         stages={stages}
+        links={links}
         onTaskEdit={handleTaskEdit}
         onTaskClick={handleTaskClick}
         onTaskChange={onTaskChange}
@@ -128,6 +145,7 @@ export function GanttChart({
 interface GanttChartContentProps {
   tasks: Task[];
   stages: Stage[];
+  links: Link[];
   onTaskEdit: (task: GanttTask) => void;
   onTaskClick?: (task: GanttTask) => void;
   onTaskChange?: (task: Task, start: Date, end: Date) => void;
@@ -138,6 +156,7 @@ interface GanttChartContentProps {
 function GanttChartContent({
   tasks,
   stages,
+  links,
   onTaskEdit,
   onTaskClick,
   onTaskChange,
@@ -162,116 +181,21 @@ function GanttChartContent({
         (gantt.config as any).drag_project = false;
         gantt.config.drag_resize = true;
         gantt.config.drag_progress = false;
-        gantt.config.drag_links = false;
+        gantt.config.drag_links = true;
 
-        // タスクの制約設定
-        gantt.attachEvent(
-          "onBeforeTaskDrag",
-          (id: string, mode: string, e: any) => {
-            const task = gantt.getTask(id);
-            // ステージの場合はドラッグを禁止
-            if (task.type === "stage") {
-              return false;
-            }
-            return true;
-          }
-        );
-
-        // デフォルトの編集モーダルを無効化
-        (gantt.config as any).lightbox = { sections: [] };
-        (gantt.config as any).show_lightbox = false;
-        (gantt.config as any).details_on_dblclick = false;
-        (gantt.config as any).details_on_create = false;
-        (gantt.config as any).quick_info_detached = false;
-
-        // タスクのダブルクリックとクリックの処理
-        gantt.attachEvent("onTaskDblClick", (id: string, e: any) => {
-          const task = gantt.getTask(id);
-          onTaskEdit(task);
-          return false;
-        });
-
-        gantt.attachEvent("onTaskClick", (id: string, e: any) => {
-          const task = gantt.getTask(id);
-          if (onTaskClick) {
-            onTaskClick(task);
-          }
-          return false;
-        });
-
-        // グリッド列の設定
-        gantt.config.columns = [
-          {
-            name: "group_type",
-            label: "グループ",
-            width: 120,
-            template: (task: GanttTask) => {
-              if (task.type === "stage") return "設計ステージ";
-              if (task.type === "task") return "タスク";
-              return "";
-            },
-          } as any,
-          {
-            name: "text",
-            label: "名前",
-            tree: true,
-            width: 200,
-            resize: true,
-          },
-          {
-            name: "start_date",
-            label: "開始日",
-            align: "center",
-            width: 100,
-            template: (task: GanttTask) => {
-              if (!task.start_date) return "";
-              const date = new Date(task.start_date);
-              return format(date, "yyyy/MM/dd");
-            },
-          } as any,
-          {
-            name: "end_date",
-            label: "終了日",
-            align: "center",
-            width: 100,
-            template: (task: GanttTask) => {
-              if (!task.end_date) return "";
-              const date = new Date(task.end_date);
-              return format(date, "yyyy/MM/dd");
-            },
-          } as any,
-          {
-            name: "status",
-            label: "ステータス",
-            align: "center",
-            width: 100,
-            resize: true,
-            template: (task: GanttTask) => {
-              switch (task.status) {
-                case "not_started":
-                  return "未着手";
-                case "in_progress":
-                  return "進行中";
-                case "completed":
-                  return "完了";
-                default:
-                  return "";
-              }
-            },
-          },
-        ];
-
-        // タスクタイプの設定
-        (gantt.config as any).types = {
-          task: "task",
-          stage: "stage",
+        // リンクの設定
+        gantt.config.links = {
+          finish_to_start: "0",
         };
 
         // データの設定
-        const formattedData: GanttTask[] = [];
+        const formattedData: { data: GanttTask[]; links: Link[] } = {
+          data: [],
+          links: links,
+        };
 
         // ステージの追加
-        formattedData.push(
+        formattedData.data.push(
           ...stages.map((stage) => ({
             id: stage.id,
             text: stage.title,
@@ -287,7 +211,7 @@ function GanttChartContent({
         );
 
         // タスクの追加
-        formattedData.push(
+        formattedData.data.push(
           ...tasks.map((task) => ({
             id: task.id,
             text: task.title,
@@ -331,9 +255,23 @@ function GanttChartContent({
 
         // ganttの初期化とデータの設定
         gantt.init(containerRef.current);
-        gantt.clearAll(); // 既存のデータをクリア
-        gantt.parse({ data: formattedData });
-        gantt.render();
+        gantt.clearAll();
+        gantt.parse(formattedData);
+
+        // タスクのダブルクリックとクリックの処理
+        gantt.attachEvent("onTaskDblClick", (id: string, e: any) => {
+          const task = gantt.getTask(id);
+          onTaskEdit(task);
+          return false;
+        });
+
+        gantt.attachEvent("onTaskClick", (id: string, e: any) => {
+          const task = gantt.getTask(id);
+          if (onTaskClick) {
+            onTaskClick(task);
+          }
+          return false;
+        });
 
       } catch (error) {
         console.error("Failed to initialize gantt chart:", error);
@@ -348,7 +286,7 @@ function GanttChartContent({
         gantt.clearAll();
       }
     };
-  }, [tasks, stages, scale, onTaskEdit, onTaskClick]);
+  }, [tasks, stages, links, scale, onTaskEdit, onTaskClick]);
 
   return (
     <div className="flex flex-col gap-4">
