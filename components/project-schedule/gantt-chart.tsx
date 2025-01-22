@@ -96,12 +96,16 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
       gantt.config.scale_unit = "month";
       gantt.config.date_scale = "%Y年%m月";
       gantt.config.subscales = [];
+      gantt.config.min_column_width = 100;
+      // 月表示用のクラスを追加
+      gantt.templates.scale_cell_class = () => "gantt_scale_cell_month";
     } else {
       gantt.config.scale_unit = "day";
       gantt.config.date_scale = "%d";
-      gantt.config.subscales = [
-        { unit: "month", step: 1, date: "%Y年%m月" }
-      ];
+      gantt.config.subscales = [{ unit: "month", step: 1, date: "%Y年%m月" }];
+      gantt.config.min_column_width = 35; // 日表示時は列幅を狭く
+      // 日表示用のクラスを追加
+      gantt.templates.scale_cell_class = () => "gantt_scale_cell_day";
     }
     gantt.render();
   };
@@ -124,25 +128,28 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
 
         // 基本的な設定
         gantt.config.date_format = "%Y-%m-%d";
-        gantt.config.min_column_width = 100;
+        gantt.config.min_column_width = scale === "month" ? 100 : 35;
         (gantt.config as any).grid_width = 520;
         gantt.config.row_height = 40;
 
         // ドラッグ＆ドロップの設定
         gantt.config.drag_progress = false; // 進捗バーのドラッグは無効
-        gantt.config.drag_resize = true;   // タスクのリサイズを有効
-        gantt.config.drag_move = true;     // タスクの移動を有効
-        gantt.config.drag_links = false;   // リンクの作成は無効
+        gantt.config.drag_resize = true; // タスクのリサイズを有効
+        gantt.config.drag_move = true; // タスクの移動を有効
+        gantt.config.drag_links = false; // リンクの作成は無効
 
         // タスクの制約設定
-        gantt.attachEvent("onBeforeTaskDrag", (id: string, mode: string, e: any) => {
-          const task = gantt.getTask(id);
-          // ステージの場合はドラッグを禁止
-          if (task.type === "stage") {
-            return false;
+        gantt.attachEvent(
+          "onBeforeTaskDrag",
+          (id: string, mode: string, e: any) => {
+            const task = gantt.getTask(id);
+            // ステージの場合はドラッグを禁止
+            if (task.type === "stage") {
+              return false;
+            }
+            return true;
           }
-          return true;
-        });
+        );
 
         // グリッド列の設定
         gantt.config.columns = [
@@ -199,8 +206,11 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
         (gantt.config as any).date_scale = scale === "month" ? "%Y年%m月" : "%d";
         if (scale === "day") {
           (gantt.config as any).subscales = [
-            { unit: "month", step: 1, date: "%Y年%m月" }
+            { unit: "month", step: 1, date: "%Y年%m月" },
           ];
+          gantt.templates.scale_cell_class = () => "gantt_scale_cell_day";
+        } else {
+          gantt.templates.scale_cell_class = () => "gantt_scale_cell_month";
         }
         (gantt.config as any).start_date = new Date("2025-01-01");
         (gantt.config as any).end_date = new Date("2025-04-30");
@@ -329,6 +339,7 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
             border-right: 1px solid #e5e7eb;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             padding: 8px 12px;
+
           }
           .gantt_grid_data .gantt_cell {
             padding: 8px 12px;
@@ -343,9 +354,39 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
           .gantt_grid_scale {
             font-size: 13px;
             line-height: 1.4;
+            height: 46px !important;
           }
           .gantt_scale_cell {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            height: 46px !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+          }
+          .gantt_task_scale {
+            height: 46px !important;
+          }
+          .gantt_scale_line {
+            height: 22px !important;
+            display: flex !important;
+            align-items: center !important;
+          }
+          .gantt_row_task .gantt_task_scale .gantt_scale_cell {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            height: 100% !important;
+          }
+          .gantt_scale_cell div {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            width: 100% !important;
+            height: 100% !important;
+          }
+          .gantt_scale_cell_month span {
+            position:relative;
+            top:10px;
           }
         `;
         document.head.appendChild(styleElement);
