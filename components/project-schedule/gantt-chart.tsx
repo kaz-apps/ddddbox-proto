@@ -1,28 +1,11 @@
-"use client";
+'use client';
 
 import { useRef, useEffect, useState } from "react";
 import { Task, Stage } from "@/types/schedule";
 import { format } from "date-fns";
 import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
-
-interface GanttChartProps {
-  tasks?: Task[];
-  stages?: Stage[];
-}
-
-// DHTMLXガントチャートの型定義
-interface GanttTask {
-  id: string;
-  text: string;
-  start_date: string | Date;
-  end_date: string | Date;
-  progress: number;
-  type?: string;
-  readonly?: boolean;
-  open?: boolean;
-}
-
-type ScaleType = "month" | "day";
+import gantt from "dhtmlx-gantt";
+import { GanttTask } from "./types";
 
 // サンプルデータ
 const sampleData = {
@@ -77,66 +60,109 @@ const sampleData = {
   ] as Task[],
 };
 
-export function GanttChart() {
+interface GanttChartProps {
+  tasks?: Task[];
+  stages?: Stage[];
+  onTaskEdit?: (task: Task) => void;
+  onTaskClick?: (task: Task) => void;
+  onTaskChange?: (task: Task, start: Date, end: Date) => void;
+  onStageClick?: (stage: Stage) => void;
+  onStageChange?: (stage: Stage, start: Date, end: Date) => void;
+}
+
+type ScaleType = "month" | "day";
+
+export function GanttChart({
+  tasks = sampleData.tasks,
+  stages = sampleData.stages,
+  onTaskEdit,
+  onTaskClick,
+  onTaskChange,
+  onStageClick,
+  onStageChange,
+}: GanttChartProps) {
+  const handleTaskEdit = (ganttTask: GanttTask) => {
+    if (onTaskEdit) {
+      // GanttTaskからTaskへの変換
+      const task: Task = {
+        id: ganttTask.id,
+        title: ganttTask.text,
+        startDate: new Date(ganttTask.start_date),
+        endDate: new Date(ganttTask.end_date),
+        description: ganttTask.description,
+        status: ganttTask.status || "not_started",
+      };
+      onTaskEdit(task);
+    }
+  };
+
+  const handleTaskClick = (ganttTask: GanttTask) => {
+    if (onTaskClick) {
+      const task: Task = {
+        id: ganttTask.id,
+        title: ganttTask.text,
+        startDate: new Date(ganttTask.start_date),
+        endDate: new Date(ganttTask.end_date),
+        description: ganttTask.description,
+        status: ganttTask.status || "not_started",
+      };
+      onTaskClick(task);
+    }
+  };
+
   return (
-    <div className="w-full h-full">
-      <GanttChartContent tasks={sampleData.tasks} stages={sampleData.stages} />
+    <div className="relative">
+      <GanttChartContent
+        tasks={tasks}
+        stages={stages}
+        onTaskEdit={handleTaskEdit}
+        onTaskClick={handleTaskClick}
+        onTaskChange={onTaskChange}
+        onStageClick={onStageClick}
+        onStageChange={onStageChange}
+      />
     </div>
   );
 }
 
-function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
+interface GanttChartContentProps {
+  tasks: Task[];
+  stages: Stage[];
+  onTaskEdit: (task: GanttTask) => void;
+  onTaskClick?: (task: GanttTask) => void;
+  onTaskChange?: (task: Task, start: Date, end: Date) => void;
+  onStageClick?: (stage: Stage) => void;
+  onStageChange?: (stage: Stage, start: Date, end: Date) => void;
+}
+
+function GanttChartContent({
+  tasks,
+  stages,
+  onTaskEdit,
+  onTaskClick,
+  onTaskChange,
+  onStageClick,
+  onStageChange,
+}: GanttChartContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState<ScaleType>("month");
-  const [ganttInstance, setGanttInstance] = useState<any>(null);
-
-  // スケール設定を更新する関数
-  const updateScale = (gantt: any, newScale: ScaleType) => {
-    if (newScale === "month") {
-      gantt.config.scale_unit = "month";
-      gantt.config.date_scale = "%Y年%m月";
-      gantt.config.subscales = [];
-      gantt.config.min_column_width = 100;
-      // 月表示用のクラスを追加
-      gantt.templates.scale_cell_class = () => "gantt_scale_cell_month";
-    } else {
-      gantt.config.scale_unit = "day";
-      gantt.config.date_scale = "%d";
-      gantt.config.subscales = [{ unit: "month", step: 1, date: "%Y年%m月" }];
-      gantt.config.min_column_width = 35; // 日表示時は列幅を狭く
-      // 日表示用のクラスを追加
-      gantt.templates.scale_cell_class = () => "gantt_scale_cell_day";
-    }
-    gantt.render();
-  };
-
-  // スケール切り替えハンドラー
-  const handleScaleChange = (newScale: ScaleType) => {
-    setScale(newScale);
-    if (ganttInstance) {
-      updateScale(ganttInstance, newScale);
-    }
-  };
 
   useEffect(() => {
     const initGantt = async () => {
       try {
-        const gantt = (await import("dhtmlx-gantt")).default;
-        setGanttInstance(gantt);
-
         if (!containerRef.current) return;
 
         // 基本的な設定
         gantt.config.date_format = "%Y-%m-%d";
-        gantt.config.min_column_width = scale === "month" ? 100 : 35;
-        (gantt.config as any).grid_width = 520;
-        gantt.config.row_height = 40;
+        gantt.config.scale_height = 30;
+        (gantt.config as any).grid_width = 200;
+        gantt.config.row_height = 30;
 
         // ドラッグ＆ドロップの設定
-        gantt.config.drag_progress = false; // 進捗バーのドラッグは無効
-        gantt.config.drag_resize = true; // タスクのリサイズを有効
-        gantt.config.drag_move = true; // タスクの移動を有効
-        gantt.config.drag_links = false; // リンクの作成は無効
+        (gantt.config as any).drag_project = false;
+        gantt.config.drag_resize = true;
+        gantt.config.drag_progress = false;
+        gantt.config.drag_links = false;
 
         // タスクの制約設定
         gantt.attachEvent(
@@ -150,6 +176,28 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
             return true;
           }
         );
+
+        // デフォルトの編集モーダルを無効化
+        (gantt.config as any).lightbox = { sections: [] };
+        (gantt.config as any).show_lightbox = false;
+        (gantt.config as any).details_on_dblclick = false;
+        (gantt.config as any).details_on_create = false;
+        (gantt.config as any).quick_info_detached = false;
+
+        // タスクのダブルクリックとクリックの処理
+        gantt.attachEvent("onTaskDblClick", (id: string, e: any) => {
+          const task = gantt.getTask(id);
+          onTaskEdit(task);
+          return false;
+        });
+
+        gantt.attachEvent("onTaskClick", (id: string, e: any) => {
+          const task = gantt.getTask(id);
+          if (onTaskClick) {
+            onTaskClick(task);
+          }
+          return false;
+        });
 
         // グリッド列の設定
         gantt.config.columns = [
@@ -166,8 +214,9 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
           {
             name: "text",
             label: "名前",
-            tree: true, // ツリー表示を有効化
+            tree: true,
             width: 200,
+            resize: true,
           },
           {
             name: "start_date",
@@ -191,6 +240,25 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
               return format(date, "yyyy/MM/dd");
             },
           } as any,
+          {
+            name: "status",
+            label: "ステータス",
+            align: "center",
+            width: 100,
+            resize: true,
+            template: (task: GanttTask) => {
+              switch (task.status) {
+                case "not_started":
+                  return "未着手";
+                case "in_progress":
+                  return "進行中";
+                case "completed":
+                  return "完了";
+                default:
+                  return "";
+              }
+            },
+          },
         ];
 
         // タスクタイプの設定
@@ -199,197 +267,74 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
           stage: "stage",
         };
 
-        // タイムラインのスケール設定
-        gantt.config.scale_height = 30;
-        (gantt.config as any).subscales = [];
-        (gantt.config as any).scale_unit = scale;
-        (gantt.config as any).date_scale = scale === "month" ? "%Y年%m月" : "%d";
-        if (scale === "day") {
-          (gantt.config as any).subscales = [
-            { unit: "month", step: 1, date: "%Y年%m月" },
-          ];
-          gantt.templates.scale_cell_class = () => "gantt_scale_cell_day";
-        } else {
-          gantt.templates.scale_cell_class = () => "gantt_scale_cell_month";
-        }
-        (gantt.config as any).start_date = new Date("2025-01-01");
-        (gantt.config as any).end_date = new Date("2025-04-30");
-
-        // 日付フォーマットの設定
-        (gantt as any).templates.date_grid = (date: Date) => {
-          return format(date, "yyyy/MM/dd");
-        };
-
-        // グリッドヘッダーのスタイル
-        (gantt as any).templates.grid_header_class = (columnName: string) => {
-          return "gantt-header";
-        };
-
-        // タスクの行スタイル
-        (gantt as any).templates.grid_row_class = (
-          start: Date,
-          end: Date,
-          task: GanttTask
-        ) => {
-          return task.type === "stage" ? "gantt-stage-row" : "gantt-task-row";
-        };
-
-        // タスクバーのスタイル
-        (gantt as any).templates.task_class = (
-          start: Date,
-          end: Date,
-          task: GanttTask
-        ) => {
-          return task.type === "stage" ? "gantt-stage-bar" : "gantt-task-bar";
-        };
-
-        // 初期化
-        gantt.init(containerRef.current);
-
-        // データの読み込み
+        // データの設定
         const formattedData: GanttTask[] = [];
 
         // ステージの追加
-        if (stages?.length > 0) {
-          formattedData.push(
-            ...stages.map((stage) => {
-              const startDate = new Date(stage.startDate);
-              const endDate = new Date(stage.endDate);
-              return {
-                id: stage.id,
-                text: stage.title,
-                start_date: format(startDate, "yyyy-MM-dd"),
-                end_date: format(endDate, "yyyy-MM-dd"),
-                type: "stage",
-                progress: 0,
-                open: true,
-                readonly: true,
-              };
-            })
-          );
-        }
+        formattedData.push(
+          ...stages.map((stage) => ({
+            id: stage.id,
+            text: stage.title,
+            start_date: format(new Date(stage.startDate), "yyyy-MM-dd"),
+            end_date: format(new Date(stage.endDate), "yyyy-MM-dd"),
+            type: "stage",
+            progress: 0,
+            open: true,
+            readonly: true,
+            color: stage.color,
+            layer: stage.layer,
+          }))
+        );
 
         // タスクの追加
-        if (tasks?.length > 0) {
-          formattedData.push(
-            ...tasks.map((task) => {
-              const startDate = new Date(task.startDate);
-              const endDate = new Date(task.endDate);
-              return {
-                id: task.id,
-                text: task.title,
-                start_date: format(startDate, "yyyy-MM-dd"),
-                end_date: format(endDate, "yyyy-MM-dd"),
-                progress:
-                  task.status === "completed"
-                    ? 1
-                    : task.status === "in_progress"
-                    ? 0.5
-                    : 0,
-                type: "task",
-              };
-            })
-          );
+        formattedData.push(
+          ...tasks.map((task) => ({
+            id: task.id,
+            text: task.title,
+            start_date: format(new Date(task.startDate), "yyyy-MM-dd"),
+            end_date: format(new Date(task.endDate), "yyyy-MM-dd"),
+            description: task.description,
+            status: task.status,
+            type: "task",
+            progress: task.status === "completed" ? 1 : task.status === "in_progress" ? 0.5 : 0,
+            parent: task.parentId,
+          }))
+        );
+
+        // スケール設定
+        if (scale === "month") {
+          (gantt.config as any).scale_unit = "month";
+          (gantt.config as any).date_scale = "%Y年%m月";
+          (gantt.config as any).subscales = [];
+          gantt.config.min_column_width = 100;
+        } else {
+          (gantt.config as any).scale_unit = "day";
+          (gantt.config as any).date_scale = "%d";
+          (gantt.config as any).subscales = [{ unit: "month", step: 1, date: "%Y年%m月" }];
+          gantt.config.min_column_width = 35;
         }
 
-        // データの設定
-        gantt.parse({ data: formattedData });
-
-        // スケールを自動調整
-        (gantt.config as any).fit_tasks = true;
-        gantt.render();
+        // データの表示範囲を設定
+        const minDate = new Date("2025-01-01");
+        const maxDate = new Date("2025-04-30");
+        (gantt.config as any).start_date = minDate;
+        (gantt.config as any).end_date = maxDate;
 
         // スタイル設定
-        const styleElement = document.createElement("style");
-        styleElement.textContent = `
-          .gantt-header {
-            background-color: #f3f4f6;
-            font-weight: bold;
-            border-bottom: 1px solid #e5e7eb;
-            padding: 8px 12px;
-          }
-          .gantt-stage-row, .gantt-task-row {
-            background-color: white;
-          }
-          .gantt-stage-bar {
-            background-color: #94a3b8;
-            border-radius: 4px;
-            border: 1px solid #64748b;
-          }
-          .gantt-stage-bar .gantt-task-content {
-            color: #1e293b;
-            font-weight: bold;
-          }
-          .gantt-task-bar {
-            background-color: #60a5fa;
-            border-radius: 4px;
-            border: 1px solid #3b82f6;
-          }
-          .gantt-task-bar .gantt-task-content {
-            color: white;
-          }
-          .gantt_cell {
-            border-right: 1px solid #e5e7eb;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            white-space: normal;
-            line-height: 1.4;
-            overflow: visible;
-          }
-          .gantt_grid_head_cell {
-            border-right: 1px solid #e5e7eb;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: 8px 12px;
+        (gantt as any).templates.task_class = (start: Date, end: Date, task: GanttTask) => {
+          return task.type === "stage" ? "gantt-stage-bar" : "gantt-task-bar";
+        };
 
-          }
-          .gantt_grid_data .gantt_cell {
-            padding: 8px 12px;
-            font-size: 13px;
-          }
-          .gantt_grid_data .gantt_cell[data-column-name="group_type"] {
-            color: #374151;
-          }
-          .gantt_grid {
-            border-right: 1px solid #e5e7eb;
-          }
-          .gantt_grid_scale {
-            font-size: 13px;
-            line-height: 1.4;
-            height: 46px !important;
-          }
-          .gantt_scale_cell {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            height: 46px !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-          }
-          .gantt_task_scale {
-            height: 46px !important;
-          }
-          .gantt_scale_line {
-            height: 22px !important;
-            display: flex !important;
-            align-items: center !important;
-          }
-          .gantt_row_task .gantt_task_scale .gantt_scale_cell {
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            height: 100% !important;
-          }
-          .gantt_scale_cell div {
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            width: 100% !important;
-            height: 100% !important;
-          }
-          .gantt_scale_cell_month span {
-            position:relative;
-            top:10px;
-          }
-        `;
-        document.head.appendChild(styleElement);
+        (gantt as any).templates.grid_row_class = (start: Date, end: Date, task: GanttTask) => {
+          return task.type === "stage" ? "gantt-stage-row" : "gantt-task-row";
+        };
+
+        // ganttの初期化とデータの設定
+        gantt.init(containerRef.current);
+        gantt.clearAll(); // 既存のデータをクリア
+        gantt.parse({ data: formattedData });
+        gantt.render();
+
       } catch (error) {
         console.error("Failed to initialize gantt chart:", error);
       }
@@ -397,15 +342,13 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
 
     initGantt();
 
+    // クリーンアップ
     return () => {
-      const element = containerRef.current;
-      if (element) {
-        while (element.firstChild) {
-          element.removeChild(element.firstChild);
-        }
+      if (containerRef.current) {
+        gantt.clearAll();
       }
     };
-  }, [tasks, stages, scale]);
+  }, [tasks, stages, scale, onTaskEdit, onTaskClick]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -416,7 +359,7 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
               ? "bg-blue-500 text-white"
               : "bg-gray-200 text-gray-700"
           }`}
-          onClick={() => handleScaleChange("month")}
+          onClick={() => setScale("month")}
         >
           月表示
         </button>
@@ -426,7 +369,7 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
               ? "bg-blue-500 text-white"
               : "bg-gray-200 text-gray-700"
           }`}
-          onClick={() => handleScaleChange("day")}
+          onClick={() => setScale("day")}
         >
           日表示
         </button>
@@ -435,5 +378,3 @@ function GanttChartContent({ tasks = [], stages = [] }: GanttChartProps) {
     </div>
   );
 }
-
-export default GanttChart;

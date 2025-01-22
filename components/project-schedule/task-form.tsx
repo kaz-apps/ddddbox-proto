@@ -18,16 +18,14 @@ import {
 } from '@/components/ui/select'
 
 interface TaskFormProps {
-  task?: Task
-  parentTask?: Task | null | undefined
-  availableTasks: Task[]
-  onSubmit: (taskData: Omit<Task, 'id'>) => void
-  onCancel: () => void
+  task?: Task | undefined;
+  availableTasks?: Task[];
+  onSubmit: (taskData: Omit<Task, 'id'>) => void;
+  onCancel: () => void;
 }
 
 export function TaskForm({
   task,
-  parentTask,
   availableTasks,
   onSubmit,
   onCancel
@@ -57,7 +55,7 @@ export function TaskForm({
       endDate: new Date(formData.endDate + 'T00:00:00'),
       status: formData.status,
       dependencies: formData.dependencies,
-      parentId: parentTask?.id,
+      parentId: task?.parentId,
       children: task?.children || [],
       isExpanded: task?.isExpanded || false
     }
@@ -70,9 +68,9 @@ export function TaskForm({
 
   return (
     <div className="space-y-4 p-4">
-      {parentTask && (
+      {task && task.parentId && (
         <div className="text-sm text-gray-500">
-          親タスク: {parentTask.title}
+          親タスク: {task.parentId}
         </div>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">

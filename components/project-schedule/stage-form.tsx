@@ -14,9 +14,9 @@ import {
 } from "@/components/ui/select"
 
 interface StageFormProps {
-  stage?: Stage
-  onSubmit: (stageData: Omit<Stage, 'id'>) => void
-  onCancel: () => void
+  stage?: Stage | undefined;
+  onSubmit: (stageData: Omit<Stage, 'id'>) => void;
+  onCancel: () => void;
 }
 
 export function StageForm({ stage, onSubmit, onCancel }: StageFormProps) {
