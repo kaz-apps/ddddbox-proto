@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Task } from '@/types/schedule'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,55 +15,33 @@ import {
   SelectGroup,
   SelectSeparator,
 } from '@/components/ui/select'
+import { Task, TaskFormData, TaskStatus, TaskType } from '@/types/schedule'
+import DatePicker from "react-datepicker"
+import "react-datepicker/dist/react-datepicker.css"
+import ja from 'date-fns/locale/ja'
 
 interface TaskFormProps {
-  task?: Task | undefined;
-  availableTasks?: Task[];
-  onSubmit: (taskData: Omit<Task, 'id'>) => void;
+  task?: Task;
+  onSubmit: (data: TaskFormData) => void;
   onCancel: () => void;
+  milestones: Task[]; // 利用可能なマイルストーンのリスト
 }
 
-export function TaskForm({
-  task,
-  availableTasks,
-  onSubmit,
-  onCancel
-}: TaskFormProps) {
-  // フォームデータの型を定義
-  type TaskStatus = 'not_started' | 'in_progress' | 'completed'
-
-  const [formData, setFormData] = useState({
-    title: task?.title || '',
-    description: task?.description || '',
-    startDate: task?.startDate || new Date().toISOString().split('T')[0],
-    endDate: task?.endDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    status: (task?.status || 'not_started') as TaskStatus,
-    dependencies: task?.dependencies || []
-  })
+export function TaskForm({ task, onSubmit, onCancel, milestones }: TaskFormProps) {
+  const [formData, setFormData] = useState<TaskFormData>({
+    name: task?.name || "",
+    start: task?.start || new Date(),
+    end: task?.end || new Date(),
+    status: (task?.status as TaskStatus) || "not_started",
+    type: (task?.type as TaskType) || "task",
+    progress: task?.progress || 0,
+    milestoneId: task?.milestoneId,
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // デバッグ用ログ
-    console.log('Form data before submit:', formData)
-    
-    const taskData = {
-      title: formData.title,
-      description: formData.description,
-      startDate: new Date(formData.startDate + 'T00:00:00'),
-      endDate: new Date(formData.endDate + 'T00:00:00'),
-      status: formData.status,
-      dependencies: formData.dependencies,
-      parentId: task?.parentId,
-      children: task?.children || [],
-      isExpanded: task?.isExpanded || false
-    }
-    
-    // デバッグ用ログ
-    console.log('Task data after processing:', taskData)
-    
-    onSubmit(taskData)
-  }
+    e.preventDefault();
+    onSubmit(formData);
+  };
 
   return (
     <div className="space-y-4 p-4">
@@ -74,56 +51,115 @@ export function TaskForm({
         </div>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="title">タイトル</Label>
+        <div className="space-y-2">
+          <Label htmlFor="name">名前</Label>
           <Input
-            id="title"
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            id="name"
+            value={formData.name}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, name: e.target.value }))
+            }
             required
           />
         </div>
 
-        <div>
-          <Label htmlFor="description">説明</Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          />
+        <div className="space-y-2">
+          <Label htmlFor="type">タイプ</Label>
+          <Select
+            value={formData.type}
+            onValueChange={(value: "task" | "milestone" | "project") =>
+              setFormData((prev) => ({ ...prev, type: value }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="task">タスク</SelectItem>
+              <SelectItem value="milestone">マイルストーン</SelectItem>
+              <SelectItem value="project">設計ステージ</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="startDate">開始日</Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={formData.startDate}
-              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-              required
-            />
+        {formData.type === "task" && (
+          <div className="space-y-2">
+            <Label htmlFor="milestone">関連マイルストーン</Label>
+            <Select
+              value={formData.milestoneId || ""}
+              onValueChange={(value: string) =>
+                setFormData((prev) => ({ ...prev, milestoneId: value || undefined }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="マイルストーンを選択" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">なし</SelectItem>
+                {milestones.map((milestone) => (
+                  <SelectItem key={milestone.id} value={milestone.id}>
+                    {milestone.name} ({milestone.end.toLocaleDateString("ja-JP")})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div>
-            <Label htmlFor="endDate">終了日</Label>
-            <Input
-              id="endDate"
-              type="date"
-              value={formData.endDate}
-              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-              required
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="start">開始日</Label>
+          <div className="relative">
+            <DatePicker
+              selected={formData.start}
+              onChange={(date: Date) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  start: date,
+                }))
+              }
+              locale={ja}
+              dateFormat="yyyy/MM/dd"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              minDate={new Date()}
+              showMonthDropdown
+              showYearDropdown
+              dropdownMode="select"
             />
           </div>
         </div>
 
-        <div>
+        <div className="space-y-2">
+          <Label htmlFor="end">終了日</Label>
+          <div className="relative">
+            <DatePicker
+              selected={formData.end}
+              onChange={(date: Date) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  end: date,
+                }))
+              }
+              locale={ja}
+              dateFormat="yyyy/MM/dd"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              minDate={formData.start}
+              showMonthDropdown
+              showYearDropdown
+              dropdownMode="select"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="status">ステータス</Label>
           <Select
             value={formData.status}
-            onValueChange={(value: TaskStatus) => setFormData({ ...formData, status: value })}
+            onValueChange={(value: TaskStatus) =>
+              setFormData((prev) => ({ ...prev, status: value }))
+            }
           >
             <SelectTrigger>
-              <SelectValue placeholder="ステータスを選択" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="not_started">未着手</SelectItem>
@@ -133,38 +169,29 @@ export function TaskForm({
           </Select>
         </div>
 
-        {availableTasks && availableTasks.length > 0 && (
-          <div>
-            <Label>依存タスク</Label>
-            <div className="space-y-2">
-              {availableTasks.map((availableTask) => (
-                <div key={availableTask.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`dependency-${availableTask.id}`}
-                    checked={formData.dependencies.includes(availableTask.id)}
-                    onCheckedChange={(checked) => {
-                      const newDependencies = checked
-                        ? [...formData.dependencies, availableTask.id]
-                        : formData.dependencies.filter(id => id !== availableTask.id)
-                      setFormData({ ...formData, dependencies: newDependencies })
-                    }}
-                  />
-                  <Label htmlFor={`dependency-${availableTask.id}`}>
-                    {availableTask.title}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="space-y-2">
+          <Label htmlFor="progress">進捗 (%)</Label>
+          <Input
+            id="progress"
+            type="number"
+            min="0"
+            max="100"
+            value={formData.progress * 100}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                progress: Number(e.target.value) / 100,
+              }))
+            }
+            required
+          />
+        </div>
 
         <div className="flex justify-end space-x-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             キャンセル
           </Button>
-          <Button type="submit">
-            {task ? '更新' : '作成'}
-          </Button>
+          <Button type="submit">保存</Button>
         </div>
       </form>
     </div>

@@ -1,207 +1,646 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { GanttChart } from "@/components/project-schedule/gantt-chart";
-import { Task, Stage, Link } from "@/types/schedule";
-import { useToast } from "@/components/ui/use-toast";
+import { Gantt, ViewMode, Task as GanttTask } from "gantt-task-react";
+import "gantt-task-react/dist/index.css";
+import { Task, TaskFormData } from "@/types/schedule";
 import { TaskForm } from "@/components/project-schedule/task-form";
-import { StageForm } from "@/components/project-schedule/stage-form";
+import { useAutoScroll } from "@/lib/hooks/useAutoScroll";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { IconShare, IconCopy } from "@tabler/icons-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { IconAlertTriangle } from "@tabler/icons-react";
 
 // サンプルデータ
-const sampleData = {
-  stages: [
-    {
-      id: "stage_1",
-      title: "基本設計1",
-      startDate: "2025-01-01",
-      endDate: "2025-02-28",
-      color: "#94a3b8",
-      layer: 0,
+const initialTasks: Task[] = [
+  {
+    start: new Date(2024, 11, 1), // 2024年12月1日
+    end: new Date(2025, 0, 31),   // 2025年1月31日
+    name: "実施設計1",
+    id: "project_1",
+    type: "project",
+    progress: 0,
+    status: "not_started",
+    isDisabled: false,
+    styles: { progressColor: "#F59E0B", progressSelectedColor: "#D97706" },
+  },
+  {
+    start: new Date(2025, 1, 1),  // 2025年2月1日
+    end: new Date(2025, 2, 31),   // 2025年3月31日
+    name: "実施設計2",
+    id: "project_2",
+    type: "project",
+    progress: 0,
+    status: "not_started",
+    isDisabled: false,
+    styles: { progressColor: "#F59E0B", progressSelectedColor: "#D97706" },
+  },
+  {
+    start: new Date(2024, 11, 15), // 2024年12月15日
+    end: new Date(2025, 0, 31),    // 2025年1月31日
+    name: "タスク1",
+    id: "task_1",
+    type: "task",
+    progress: 0,
+    status: "not_started",
+    isDisabled: false,
+    project: "project_1",
+    styles: { progressColor: "#94A3B8", progressSelectedColor: "#64748B" },
+  },
+  {
+    start: new Date(2025, 1, 1),  // 2025年2月1日
+    end: new Date(2025, 2, 15),   // 2025年3月15日
+    name: "タスク2",
+    id: "task_2",
+    type: "task",
+    progress: 0,
+    status: "not_started",
+    isDisabled: false,
+    project: "project_2",
+    styles: { progressColor: "#94A3B8", progressSelectedColor: "#64748B" },
+  },
+  {
+    start: new Date(2024, 11, 31), // 2024年12月31日
+    end: new Date(2024, 11, 31),   // 2024年12月31日
+    name: "設計完了",
+    id: "milestone_1",
+    type: "milestone",
+    progress: 0,
+    status: "not_started",
+    isDisabled: false,
+    project: "project_1",
+    styles: {
+      progressColor: "#EF4444",
+      progressSelectedColor: "#DC2626",
+      backgroundColor: "#FEE2E2",
+      backgroundSelectedColor: "#FECACA",
     },
-    {
-      id: "stage_2",
-      title: "実施設計1",
-      startDate: "2025-02-01",
-      endDate: "2025-03-30",
-      color: "#94a3b8",
-      layer: 0,
-    },
-    {
-      id: "stage_3",
-      title: "実施設計2",
-      startDate: "2025-03-01",
-      endDate: "2025-04-30",
-      color: "#94a3b8",
-      layer: 0,
-    },
-  ] as Stage[],
-  tasks: [
-    {
-      id: "task_1",
-      title: "基本設計書作成",
-      startDate: "2025-01-15",
-      endDate: "2025-02-15",
-      status: "not_started" as const,
-    },
-    {
-      id: "task_2",
-      title: "構造計算書作成",
-      startDate: "2025-02-01",
-      endDate: "2025-03-15",
-      status: "not_started" as const,
-    },
-    {
-      id: "task_3",
-      title: "確認申請準備",
-      startDate: "2025-03-16",
-      endDate: "2025-04-15",
-      status: "not_started" as const,
-    },
-  ] as Task[],
-  // タスク間の依存関係を定義
-  links: [
-    { id: 1, source: "task_1", target: "task_2", type: "0" }, // task_1 -> task_2
-    { id: 2, source: "task_2", target: "task_3", type: "0" }, // task_2 -> task_3
-  ],
-};
+  },
+  // 表示期間を制御するための非表示タスク
+  {
+    start: new Date(2024, 11, 1),  // 2024年12月1日
+    end: new Date(2025, 11, 31),   // 2025年12月31日
+    name: "表示期間",
+    id: "display_range",
+    type: "task",
+    progress: 0,
+    status: "not_started",
+    isDisabled: true,
+    hideChildren: true,
+    styles: { progressColor: "transparent", progressSelectedColor: "transparent" },
+  },
+];
+
+interface TaskBarProps {
+  task: GanttTask;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  isSelected: boolean;
+  isDateChangeable: boolean;
+  onMouseDown?: (event: React.MouseEvent<SVGGElement, MouseEvent>) => void;
+}
 
 export default function SchedulePage() {
-  const { toast } = useToast();
-  const [tasks, setTasks] = useState<Task[]>(sampleData.tasks);
-  const [stages, setStages] = useState<Stage[]>(sampleData.stages);
-  const [links, setLinks] = useState<Link[]>(sampleData.links);
-  const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
-  const [selectedStage, setSelectedStage] = useState<Stage | undefined>(
-    undefined
-  );
-  const [parentTask, setParentTask] = useState<Task | undefined>(undefined);
-  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-  const [isStageDialogOpen, setIsStageDialogOpen] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  useAutoScroll(scrollContainerRef);
 
-  const handleTaskSubmit = (taskData: Omit<Task, "id">) => {
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [selectedTask, setSelectedTask] = useState<Task | undefined>();
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Month);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+  const [shareExpiry, setShareExpiry] = useState("24"); // 有効期限（時間）
+  const [alerts, setAlerts] = useState<{
+    milestoneId: string;
+    milestoneName: string;
+    dueDate: Date;
+    incompleteTasks: string[];
+  }[]>([]);
+
+  // タスクの並び順を管理するstate
+  const [taskOrder, setTaskOrder] = useState<{ [key: string]: number }>({});
+
+  // タスクをグループごとにソートする関数
+  const getSortedTasks = (tasks: Task[]) => {
+    const displayRangeTask = tasks.find(task => task.id === 'display_range');
+    const otherTasks = tasks.filter(task => task.id !== 'display_range');
+
+    // グループごとにタスクを分類
+    const milestones = otherTasks.filter(task => task.type === 'milestone');
+    const projects = otherTasks.filter(task => task.type === 'project');
+    const regularTasks = otherTasks.filter(task => task.type === 'task');
+
+    // グループ内でのソート
+    const sortByOrder = (a: Task, b: Task) => {
+      const orderA = taskOrder[a.id] || 0;
+      const orderB = taskOrder[b.id] || 0;
+      return orderA - orderB;
+    };
+
+    // ソートされたタスクを結合
+    const sortedTasks = [
+      ...milestones.sort(sortByOrder),
+      ...projects.sort(sortByOrder),
+      ...regularTasks.sort(sortByOrder),
+    ];
+
+    // display_range タスクを追加
+    return displayRangeTask ? [...sortedTasks, displayRangeTask] : sortedTasks;
+  };
+
+  // ドラッグ開始時のインデックスを保持
+  const dragStartIndex = useRef<number | null>(null);
+  const dragOverIndex = useRef<number | null>(null);
+
+  // ドラッグ&ドロップのイベントハンドラ
+  const handleDragStart = (index: number) => {
+    dragStartIndex.current = index;
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    dragOverIndex.current = index;
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragStartIndex.current === null || dragOverIndex.current === null) return;
+
+    const currentTasks = getSortedTasks(tasks).filter(task => task.id !== 'display_range');
+    const draggedTask = currentTasks[dragStartIndex.current];
+    const targetTask = currentTasks[dragOverIndex.current];
+
+    // 同じタイプのタスク間でのみ並び替えを許可
+    if (draggedTask.type !== targetTask.type) return;
+
+    // 新しい順序を計算
+    const newOrder = { ...taskOrder };
+    const sameTypeTasks = currentTasks.filter(t => t.type === draggedTask.type);
+    const targetIndex = sameTypeTasks.findIndex(t => t.id === targetTask.id);
+
+    // 移動先の前後のタスクの順序値を取得
+    const prevTask = sameTypeTasks[targetIndex - 1];
+    const nextTask = sameTypeTasks[targetIndex + 1];
+    
+    let newOrderValue: number;
+    if (!prevTask) {
+      // 先頭に移動
+      newOrderValue = (taskOrder[targetTask.id] || 0) - 1000;
+    } else if (!nextTask) {
+      // 末尾に移動
+      newOrderValue = (taskOrder[targetTask.id] || 0) + 1000;
+    } else {
+      // 間に移動
+      newOrderValue = ((taskOrder[prevTask.id] || 0) + (taskOrder[targetTask.id] || 0)) / 2;
+    }
+
+    newOrder[draggedTask.id] = newOrderValue;
+    setTaskOrder(newOrder);
+
+    // リセット
+    dragStartIndex.current = null;
+    dragOverIndex.current = null;
+  };
+
+  // Ganttコンポーネントに渡すタスクを並び替え
+  const sortedTasks = getSortedTasks(tasks);
+
+  // マイルストーンのアラートをチェックする関数
+  const checkMilestoneAlerts = () => {
+    const now = new Date();
+    const newAlerts: typeof alerts = [];
+
+    const milestones = tasks.filter(task => task.type === "milestone");
+    const regularTasks = tasks.filter(task => task.type === "task");
+
+    milestones.forEach(milestone => {
+      if (milestone.end < now) {
+        const relatedTasks = regularTasks.filter(task => task.milestoneId === milestone.id);
+        const incompleteTasks = relatedTasks.filter(task => task.status !== "completed");
+
+        if (incompleteTasks.length > 0) {
+          newAlerts.push({
+            milestoneId: milestone.id,
+            milestoneName: milestone.name,
+            dueDate: milestone.end,
+            incompleteTasks: incompleteTasks.map(task => task.name),
+          });
+        }
+      }
+    });
+
+    setAlerts(newAlerts);
+  };
+
+  // タスクが変更されたときにアラートをチェック
+  useEffect(() => {
+    checkMilestoneAlerts();
+  }, [tasks]);
+
+  const handleTaskSubmit = (data: TaskFormData) => {
     if (selectedTask) {
-      // 既存タスクの編集
+      // 既存タスクの更新
       setTasks((prev) =>
         prev.map((task) =>
-          task.id === selectedTask.id ? { ...task, ...taskData } : task
+          task.id === selectedTask.id
+            ? {
+                ...task,
+                ...data,
+                project: data.type === "task" ? "project_1" : undefined,
+                styles:
+                  data.type === "project"
+                    ? { 
+                        progressColor: "#F59E0B", 
+                        progressSelectedColor: "#D97706",
+                        arrowColor: "#F59E0B",
+                        arrowIndent: 20,
+                        barBackgroundColor: "#FEF3C7",
+                        backgroundColor: "#FEF3C7",
+                        backgroundSelectedColor: "#FDE68A",
+                      }
+                    : { 
+                        progressColor: "#94A3B8", 
+                        progressSelectedColor: "#64748B",
+                        arrowColor: "#94A3B8",
+                        arrowIndent: 20,
+                        barBackgroundColor: "#F1F5F9",
+                        backgroundColor: "#F1F5F9",
+                        backgroundSelectedColor: "#E2E8F0",
+                      },
+              }
+            : task
         )
       );
-      toast({
-        title: "タスクを更新しました",
-        description: `${taskData.title}を更新しました`,
-      });
     } else {
       // 新規タスク作成
       const newTask: Task = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...taskData,
+        ...data,
+        id: `${data.type}_${Math.random().toString(36).substr(2, 9)}`,
+        project: data.type === "task" ? "project_1" : undefined,
+        isDisabled: false,
+        styles:
+          data.type === "project"
+            ? { 
+                progressColor: "#F59E0B", 
+                progressSelectedColor: "#D97706",
+                arrowColor: "#F59E0B",
+                arrowIndent: 20,
+                barBackgroundColor: "#FEF3C7",
+                backgroundColor: "#FEF3C7",
+                backgroundSelectedColor: "#FDE68A",
+              }
+            : { 
+                progressColor: "#94A3B8", 
+                progressSelectedColor: "#64748B",
+                arrowColor: "#94A3B8",
+                arrowIndent: 20,
+                barBackgroundColor: "#F1F5F9",
+                backgroundColor: "#F1F5F9",
+                backgroundSelectedColor: "#E2E8F0",
+              },
       };
       setTasks((prev) => [...prev, newTask]);
-      toast({
-        title: "タスクを作成しました",
-        description: `${taskData.title}を作成しました`,
-      });
     }
     setIsTaskDialogOpen(false);
     setSelectedTask(undefined);
-    setParentTask(undefined);
   };
 
-  const handleStageSubmit = (stageData: Omit<Stage, "id">) => {
-    if (selectedStage) {
-      // 既存ステージの編集
-      setStages((prev) =>
-        prev.map((stage) =>
-          stage.id === selectedStage.id ? { ...stage, ...stageData } : stage
+  const handleTaskChange = (task: GanttTask) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? { ...t, ...task, status: t.status } : t))
+    );
+  };
+
+  const handleTaskClick = (task: GanttTask) => {
+    const selectedTask = tasks.find((t) => t.id === task.id);
+    if (selectedTask) {
+      setSelectedTask(selectedTask);
+      setIsTaskDialogOpen(true);
+    }
+  };
+
+  const handleProgressChange = (task: GanttTask) => {
+    const updatedTask = tasks.find((t) => t.id === task.id);
+    if (updatedTask) {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === task.id ? { ...t, progress: task.progress } : t
         )
       );
-      toast({
-        title: "ステージを更新しました",
-        description: `${stageData.title}を更新しました`,
-      });
-    } else {
-      // 新規ステージ作成
-      const newStage: Stage = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...stageData,
-      };
-      setStages((prev) => [...prev, newStage]);
-      toast({
-        title: "ステージを作成しました",
-        description: `${stageData.title}を作成しました`,
-      });
     }
-    setIsStageDialogOpen(false);
-    setSelectedStage(undefined);
+    return true;
   };
 
-  const handleTaskEdit = (task: Task) => {
-    setSelectedTask(task);
-    setIsTaskDialogOpen(true);
+  const handleDateChange = (task: GanttTask) => {
+    const updatedTask = tasks.find((t) => t.id === task.id);
+    if (updatedTask) {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === task.id
+            ? { ...t, start: task.start, end: task.end }
+            : t
+        )
+      );
+    }
+    return true;
   };
 
-  const handleTaskClick = (task: Task) => {
-    // クリックでも編集モーダルを表示
-    setSelectedTask(task);
-    setIsTaskDialogOpen(true);
+  // 共有URLを生成する関数
+  const generateShareUrl = async () => {
+    try {
+      const response = await fetch("/api/schedule/share", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tasks: tasks.filter(task => task.id !== "display_range"),
+          expiryHours: parseInt(shareExpiry),
+        }),
+      });
+      
+      if (!response.ok) throw new Error("Failed to generate share URL");
+      
+      const { url } = await response.json();
+      setShareUrl(url);
+    } catch (error) {
+      console.error("Error generating share URL:", error);
+      // TODO: エラー処理
+    }
   };
 
-  const handleStageClick = (stage: Stage) => {
-    setSelectedStage(stage);
-    setIsStageDialogOpen(true);
-  };
-
-  const handleTaskChange = (task: Task, start: Date, end: Date) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === task.id
-          ? { ...t, startDate: start.toISOString(), endDate: end.toISOString() }
-          : t
-      )
-    );
-  };
-
-  const handleStageChange = (stage: Stage, start: Date, end: Date) => {
-    setStages((prev) =>
-      prev.map((s) =>
-        s.id === stage.id
-          ? { ...s, startDate: start.toISOString(), endDate: end.toISOString() }
-          : s
-      )
-    );
+  // URLをクリップボードにコピーする関数
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      // TODO: コピー成功通知
+    } catch (error) {
+      console.error("Error copying to clipboard:", error);
+      // TODO: エラー処理
+    }
   };
 
   return (
-    <div className=" mx-auto py-6 space-y-4">
+    <div className="mx-auto py-6 space-y-4">
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          {alerts.map((alert) => (
+            <Alert key={alert.milestoneId} variant="destructive">
+              <IconAlertTriangle className="h-4 w-4" />
+              <AlertTitle>マイルストーン期限超過</AlertTitle>
+              <AlertDescription>
+                マイルストーン「{alert.milestoneName}」({alert.dueDate.toLocaleDateString("ja-JP")})に関連する
+                以下のタスクが未完了です：
+                <ul className="list-disc list-inside mt-2">
+                  {alert.incompleteTasks.map((taskName, index) => (
+                    <li key={index}>{taskName}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          ))}
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">スケジュール</h1>
-        <div className="space-x-2">
-          <Button onClick={() => setIsStageDialogOpen(true)}>
-            設計ステージを追加
+        <div className="flex items-center space-x-4">
+          <Select
+            value={viewMode}
+            onValueChange={(value: ViewMode) => setViewMode(value)}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ViewMode.Day}>日表示</SelectItem>
+              <SelectItem value={ViewMode.Month}>月表示</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            variant="outline"
+            onClick={() => setIsShareDialogOpen(true)}
+          >
+            <IconShare className="w-4 h-4 mr-2" />
+            共有
           </Button>
           <Button onClick={() => setIsTaskDialogOpen(true)}>
-            タスクを追加
+            追加
           </Button>
         </div>
       </div>
 
-      <GanttChart
-        tasks={tasks}
-        stages={stages}
-        links={links}
-        onTaskEdit={handleTaskEdit}
-        onTaskClick={handleTaskClick}
-        onTaskChange={handleTaskChange}
-        onStageClick={handleStageClick}
-        onStageChange={handleStageChange}
-      />
+      <div className="border rounded-lg p-4 bg-white">
+        <div className="flex h-[600px]">
+          <div className="w-[560px] flex-shrink-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[120px]">グループ</TableHead>
+                  <TableHead className="w-[200px]">名前</TableHead>
+                  <TableHead className="w-[120px]">開始日</TableHead>
+                  <TableHead className="w-[120px]">終了日</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedTasks.filter(task => task.id !== "display_range").map((task, index) => (
+                  <TableRow 
+                    key={task.id}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={handleDrop}
+                    className="cursor-move"
+                  >
+                    <TableCell>
+                      {task.type === "project" 
+                        ? "設計ステージ" 
+                        : task.type === "milestone"
+                        ? "マイルストーン"
+                        : "タスク"}
+                    </TableCell>
+                    <TableCell>{task.name}</TableCell>
+                    <TableCell>
+                      {task.start.toLocaleDateString("ja-JP", {
+                        year: "numeric",
+                        month: "numeric",
+                        day: "numeric",
+                      })}
+                    </TableCell>
+                    <TableCell>
+                      {task.end.toLocaleDateString("ja-JP", {
+                        year: "numeric",
+                        month: "numeric",
+                        day: "numeric",
+                      })}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div 
+            ref={scrollContainerRef}
+            className="flex-grow overflow-auto scroll-smooth"
+          >
+            <div style={{ 
+              minWidth: viewMode === ViewMode.Day ? "3000px" : "1500px",
+              height: "100%"
+            }}>
+              <style jsx global>{`
+                /* その他の既存のスタイル */
+                .bar-wrapper {
+                  position: relative;
+                  height: 50px !important;
+                }
+                .bar {
+                  position: relative;
+                  min-width: 100px;
+                  display: flex;
+                  align-items: center;
+                  opacity: 1 !important;
+                  height: 50px !important;
+                }
+                .bar > svg {
+                  opacity: 1 !important;
+                  height: 50px !important;
+                }
+                .bar > svg rect {
+                  opacity: 1 !important;
+                }
+                /* テーブルとガントチャートの行の高さを揃える */
+                tr {
+                  height: 50px !important;
+                  min-height: 50px !important;
+                  max-height: 50px !important;
+                }
+                td {
+                  height: 50px !important;
+                  min-height: 50px !important;
+                  max-height: 50px !important;
+                  padding-top: 0 !important;
+                  padding-bottom: 0 !important;
+                }
+                .gantt-table-header {
+                  height: 50px !important;
+                }
+                /* 表示期間タスクを完全に非表示にする */
+                .bar[data-task-id="display_range"] {
+                  display: none !important;
+                }
+                /* プロジェクトタスクのバー */
+                .bar[data-task-type="project"] > svg rect._31ERP {
+                  fill: #4F46E5 !important; /* インディゴ-600 */
+                }
+                .bar[data-task-type="project"] > svg rect._3T42e {
+                  fill: #4338CA !important; /* インディゴ-700 */
+                }
+                /* マイルストーンのバー */
+                .bar[data-task-type="milestone"] > svg rect._31ERP {
+                  fill: #FA8072 !important; /* サーモンピンク */
+                }
+                .bar[data-task-type="milestone"] > svg rect._3T42e {
+                  fill: #E9967A !important; /* ダークサーモン */
+                }
+                /* 通常タスクのバー */
+                .bar[data-task-type="task"] > svg rect._31ERP {
+                  fill: #4ADE80 !important; /* グリーン-500 */
+                }
+                .bar[data-task-type="task"] > svg rect._3T42e {
+                  fill: #22C55E !important; /* グリーン-600 */
+                }
+                /* ツールチップを非表示にする */
+                .tooltip-default {
+                  display: none !important;
+                }
+                /* ガントチャートの行の高さを調整 */
+                .gantt-row {
+                  height: 50px !important;
+                }
+                .gantt-row-bar {
+                  height: 50px !important;
+                }
+              `}</style>
+              <Gantt
+                tasks={sortedTasks
+                  .filter(task => task.id !== "display_range")
+                  .map(task => ({
+                  ...task,
+                  styles: {
+                    ...task.styles,
+                    // プロジェクト
+                    ...(task.type === "project" ? {
+                      barBackgroundColor: "#4F46E5",
+                      backgroundColor: "#4F46E5",
+                      backgroundSelectedColor: "#4338CA",
+                      progressColor: "#4338CA",
+                      progressSelectedColor: "#3730A3",
+                    } :
+                    // マイルストーン
+                    task.type === "milestone" ? {
+                      barBackgroundColor: "#FA8072",
+                      backgroundColor: "#FA8072",
+                      backgroundSelectedColor: "#E9967A",
+                      progressColor: "#E9967A",
+                      progressSelectedColor: "#CD5C5C",
+                    } :
+                    // タスク
+                    {
+                      barBackgroundColor: "#4ADE80",
+                      backgroundColor: "#4ADE80",
+                      backgroundSelectedColor: "#22C55E",
+                      progressColor: "#22C55E",
+                      progressSelectedColor: "#16A34A",
+                    })
+                  }
+                }))}
+                viewMode={viewMode}
+                onDateChange={handleDateChange}
+                onProgressChange={handleProgressChange}
+                onDoubleClick={handleTaskClick}
+                listCellWidth=""
+                columnWidth={viewMode === ViewMode.Day ? 40 : 200}
+                locale="ja-JP"
+                barFill={75}
+                rowHeight={50}
+                barCornerRadius={4}
+                fontSize="12px"
+                headerHeight={50}
+                rtl={false}
+                TaskListHeader={() => null}
+                TaskListTable={() => null}
+                TooltipContent={() => null}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
         <DialogContent>
@@ -212,32 +651,74 @@ export default function SchedulePage() {
           </DialogHeader>
           <TaskForm
             task={selectedTask}
-            availableTasks={tasks}
             onSubmit={handleTaskSubmit}
             onCancel={() => {
               setIsTaskDialogOpen(false);
               setSelectedTask(undefined);
-              setParentTask(undefined);
             }}
+            milestones={tasks.filter(task => task.type === "milestone")}
           />
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isStageDialogOpen} onOpenChange={setIsStageDialogOpen}>
+      <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {selectedStage ? "ステージを編集" : "ステージを作成"}
-            </DialogTitle>
+            <DialogTitle>スケジュールを共有</DialogTitle>
+            <DialogDescription>
+              一時的な共有URLを生成します。URLは指定した期間後に無効になります。
+            </DialogDescription>
           </DialogHeader>
-          <StageForm
-            stage={selectedStage}
-            onSubmit={handleStageSubmit}
-            onCancel={() => {
-              setIsStageDialogOpen(false);
-              setSelectedStage(undefined);
-            }}
-          />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="expiry" className="text-sm font-medium">
+                有効期限
+              </label>
+              <Select
+                value={shareExpiry}
+                onValueChange={setShareExpiry}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1時間</SelectItem>
+                  <SelectItem value="24">24時間</SelectItem>
+                  <SelectItem value="72">3日間</SelectItem>
+                  <SelectItem value="168">7日間</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {shareUrl ? (
+              <div className="space-y-2">
+                <label htmlFor="share-url" className="text-sm font-medium">
+                  共有URL
+                </label>
+                <div className="flex space-x-2">
+                  <Input
+                    id="share-url"
+                    value={shareUrl}
+                    readOnly
+                    className="flex-grow"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={copyToClipboard}
+                  >
+                    <IconCopy className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                onClick={generateShareUrl}
+                className="w-full"
+              >
+                共有URLを生成
+              </Button>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
