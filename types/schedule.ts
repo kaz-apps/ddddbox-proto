@@ -1,30 +1,39 @@
-import { Task as GanttTask, ViewMode } from "gantt-task-react";
+export type TaskStatus = "not_started" | "in_progress" | "completed";
+export type TaskType = "project" | "milestone" | "task";
 
-export type TaskStatus = 'not_started' | 'in_progress' | 'completed';
-
-export interface Task extends GanttTask {
+export interface Task {
+  id: string;
+  name: string;
+  type: TaskType;
+  start: Date;
+  end: Date;
+  progress: number;
   status: TaskStatus;
+  isDisabled: boolean;
+  project?: string;
+  milestoneId?: string;
+  dependencies?: string[];  // 依存するタスクのID配列
+  hideChildren?: boolean;
   styles?: {
-    progressColor?: string;
-    progressSelectedColor?: string;
     backgroundColor?: string;
     backgroundSelectedColor?: string;
+    progressColor?: string;
+    progressSelectedColor?: string;
     barBackgroundColor?: string;
+    barProgressColor?: string;
     arrowColor?: string;
     arrowIndent?: number;
   };
-  milestoneId?: string;
 }
 
 export interface TaskFormData {
   name: string;
+  type: TaskType;
   start: Date;
   end: Date;
-  status: TaskStatus;
-  type: "task" | "milestone" | "project";
   progress: number;
-  isDisabled?: boolean;
-  dependencies?: string[];
+  status: TaskStatus;
   project?: string;
   milestoneId?: string;
+  dependencies?: string[];  // 依存するタスクのID配列
 } 

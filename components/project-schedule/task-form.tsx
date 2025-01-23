@@ -1,33 +1,29 @@
-'use client'
-
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectGroup,
-  SelectSeparator,
 } from '@/components/ui/select'
 import { Task, TaskFormData, TaskStatus, TaskType } from '@/types/schedule'
 import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
-import ja from 'date-fns/locale/ja'
+import { ja } from 'date-fns/locale/ja'
+import { MultiSelect } from '@/components/ui/multi-select'
 
 interface TaskFormProps {
   task?: Task;
   onSubmit: (data: TaskFormData) => void;
   onCancel: () => void;
   milestones: Task[]; // 利用可能なマイルストーンのリスト
+  tasks: Task[]; // 依存関係の選択用に全タスクを受け取る
 }
 
-export function TaskForm({ task, onSubmit, onCancel, milestones }: TaskFormProps) {
+export function TaskForm({ task, onSubmit, onCancel, milestones, tasks }: TaskFormProps) {
   const [formData, setFormData] = useState<TaskFormData>({
     name: task?.name || "",
     start: task?.start || new Date(),
@@ -35,7 +31,24 @@ export function TaskForm({ task, onSubmit, onCancel, milestones }: TaskFormProps
     status: (task?.status as TaskStatus) || "not_started",
     type: (task?.type as TaskType) || "task",
     progress: task?.progress || 0,
+    project: task?.project,
     milestoneId: task?.milestoneId,
+    dependencies: task?.dependencies || [],
+  });
+
+  // 依存関係として選択可能なタスクのリスト
+  const availableDependencies = tasks.filter(t => 
+    t.id !== task?.id && // 自分自身は除外
+    t.type === formData.type && // 同じタイプのタスクのみ
+    t.project === formData.project // 同じプロジェクト内のタスクのみ
+  );
+
+  console.log('Available tasks for dependencies:', {
+    allTasks: tasks,
+    filteredTasks: availableDependencies,
+    currentTaskId: task?.id,
+    currentType: formData.type,
+    currentProject: formData.project
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -45,11 +58,6 @@ export function TaskForm({ task, onSubmit, onCancel, milestones }: TaskFormProps
 
   return (
     <div className="space-y-4 p-4">
-      {task && task.parentId && (
-        <div className="text-sm text-gray-500">
-          親タスク: {task.parentId}
-        </div>
-      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="name">名前</Label>
@@ -67,7 +75,7 @@ export function TaskForm({ task, onSubmit, onCancel, milestones }: TaskFormProps
           <Label htmlFor="type">タイプ</Label>
           <Select
             value={formData.type}
-            onValueChange={(value: "task" | "milestone" | "project") =>
+            onValueChange={(value: TaskType) =>
               setFormData((prev) => ({ ...prev, type: value }))
             }
           >
@@ -75,79 +83,60 @@ export function TaskForm({ task, onSubmit, onCancel, milestones }: TaskFormProps
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="task">タスク</SelectItem>
-              <SelectItem value="milestone">マイルストーン</SelectItem>
               <SelectItem value="project">設計ステージ</SelectItem>
+              <SelectItem value="milestone">マイルストーン</SelectItem>
+              <SelectItem value="task">タスク</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {formData.type === "task" && (
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="milestone">関連マイルストーン</Label>
-            <Select
-              value={formData.milestoneId || ""}
-              onValueChange={(value: string) =>
-                setFormData((prev) => ({ ...prev, milestoneId: value || undefined }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="マイルストーンを選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">なし</SelectItem>
-                {milestones.map((milestone) => (
-                  <SelectItem key={milestone.id} value={milestone.id}>
-                    {milestone.name} ({milestone.end.toLocaleDateString("ja-JP")})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor="start">開始日</Label>
-          <div className="relative">
+            <Label htmlFor="start">開始日</Label>
             <DatePicker
+              id="start"
               selected={formData.start}
-              onChange={(date: Date) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  start: date,
-                }))
+              onChange={(date: Date | null) =>
+                setFormData((prev) => ({ ...prev, start: date || new Date() }))
               }
-              locale={ja}
               dateFormat="yyyy/MM/dd"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-              minDate={new Date()}
-              showMonthDropdown
-              showYearDropdown
-              dropdownMode="select"
+              locale={ja}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="end">終了日</Label>
+            <DatePicker
+              id="end"
+              selected={formData.end}
+              onChange={(date: Date | null) =>
+                setFormData((prev) => ({ ...prev, end: date || new Date() }))
+              }
+              dateFormat="yyyy/MM/dd"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              minDate={formData.start}
+              locale={ja}
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="end">終了日</Label>
-          <div className="relative">
-            <DatePicker
-              selected={formData.end}
-              onChange={(date: Date) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  end: date,
-                }))
-              }
-              locale={ja}
-              dateFormat="yyyy/MM/dd"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-              minDate={formData.start}
-              showMonthDropdown
-              showYearDropdown
-              dropdownMode="select"
-            />
-          </div>
+          <Label htmlFor="progress">進捗 (%)</Label>
+          <Input
+            id="progress"
+            type="number"
+            min="0"
+            max="100"
+            value={formData.progress * 100}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                progress: Number(e.target.value) / 100,
+              }))
+            }
+            required
+          />
         </div>
 
         <div className="space-y-2">
@@ -169,23 +158,49 @@ export function TaskForm({ task, onSubmit, onCancel, milestones }: TaskFormProps
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="progress">進捗 (%)</Label>
-          <Input
-            id="progress"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.progress * 100}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                progress: Number(e.target.value) / 100,
-              }))
-            }
-            required
-          />
-        </div>
+        {formData.type === "task" && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="milestone">関連マイルストーン</Label>
+              <Select
+                value={formData.milestoneId || "none"}
+                onValueChange={(value: string) =>
+                  setFormData((prev) => ({ ...prev, milestoneId: value === "none" ? undefined : value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="選択してください" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">なし</SelectItem>
+                  {milestones.map((milestone) => (
+                    <SelectItem key={milestone.id} value={milestone.id}>
+                      {milestone.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dependencies">依存タスク（複数選択可）</Label>
+              <MultiSelect
+                options={availableDependencies.map(dep => ({
+                  value: dep.id,
+                  label: dep.name
+                }))}
+                selected={formData.dependencies || []}
+                onChange={(values: string[]) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    dependencies: values
+                  }))
+                }
+                placeholder="依存タスクを選択"
+              />
+            </div>
+          </>
+        )}
 
         <div className="flex justify-end space-x-2">
           <Button type="button" variant="outline" onClick={onCancel}>
@@ -195,5 +210,5 @@ export function TaskForm({ task, onSubmit, onCancel, milestones }: TaskFormProps
         </div>
       </form>
     </div>
-  )
-}
+  );
+} 

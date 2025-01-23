@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonProps, buttonVariants } from "@/components/ui/button";
 import { Gantt, ViewMode, Task as GanttTask } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
 import { Task, TaskFormData } from "@/types/schedule";
@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { IconShare, IconCopy } from "@tabler/icons-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { IconAlertTriangle } from "@tabler/icons-react";
+import { cn } from "@/lib/utils";
 
 // サンプルデータ
 const initialTasks: Task[] = [
@@ -62,7 +63,7 @@ const initialTasks: Task[] = [
     start: new Date(2024, 11, 15), // 2024年12月15日
     end: new Date(2025, 0, 31),    // 2025年1月31日
     name: "タスク1",
-    id: "task_1",
+      id: "task_1",
     type: "task",
     progress: 0,
     status: "not_started",
@@ -74,7 +75,7 @@ const initialTasks: Task[] = [
     start: new Date(2025, 1, 1),  // 2025年2月1日
     end: new Date(2025, 2, 15),   // 2025年3月15日
     name: "タスク2",
-    id: "task_2",
+      id: "task_2",
     type: "task",
     progress: 0,
     status: "not_started",
@@ -132,7 +133,7 @@ export default function SchedulePage() {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Month);
+  const [viewMode, setViewMode] = useState<keyof typeof ViewMode>(ViewMode.Month);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const [shareExpiry, setShareExpiry] = useState("24"); // 有効期限（時間）
@@ -264,6 +265,7 @@ export default function SchedulePage() {
   }, [tasks]);
 
   const handleTaskSubmit = (data: TaskFormData) => {
+    console.log('Submitting task with data:', data); // デバッグログを追加
     if (selectedTask) {
       // 既存タスクの更新
       setTasks((prev) =>
@@ -273,6 +275,7 @@ export default function SchedulePage() {
                 ...task,
                 ...data,
                 project: data.type === "task" ? "project_1" : undefined,
+                dependencies: data.dependencies, // 依存関係を明示的に設定
                 styles:
                   data.type === "project"
                     ? { 
@@ -303,6 +306,7 @@ export default function SchedulePage() {
         ...data,
         id: `${data.type}_${Math.random().toString(36).substr(2, 9)}`,
         project: data.type === "task" ? "project_1" : undefined,
+        dependencies: data.dependencies, // 依存関係を明示的に設定
         isDisabled: false,
         styles:
           data.type === "project"
@@ -325,6 +329,7 @@ export default function SchedulePage() {
                 backgroundSelectedColor: "#E2E8F0",
               },
       };
+      console.log('Creating new task:', newTask); // デバッグログを追加
       setTasks((prev) => [...prev, newTask]);
     }
     setIsTaskDialogOpen(false);
@@ -360,13 +365,13 @@ export default function SchedulePage() {
   const handleDateChange = (task: GanttTask) => {
     const updatedTask = tasks.find((t) => t.id === task.id);
     if (updatedTask) {
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === task.id
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id
             ? { ...t, start: task.start, end: task.end }
-            : t
-        )
-      );
+          : t
+      )
+    );
     }
     return true;
   };
@@ -433,14 +438,14 @@ export default function SchedulePage() {
         <div className="flex items-center space-x-4">
           <Select
             value={viewMode}
-            onValueChange={(value: ViewMode) => setViewMode(value)}
+            onValueChange={(value: keyof typeof ViewMode) => setViewMode(value)}
           >
             <SelectTrigger className="w-32">
-              <SelectValue />
+              <SelectValue placeholder="表示モード" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ViewMode.Day}>日表示</SelectItem>
-              <SelectItem value={ViewMode.Month}>月表示</SelectItem>
+              <SelectItem value="Day">日表示</SelectItem>
+              <SelectItem value="Month">月表示</SelectItem>
             </SelectContent>
           </Select>
           <Button 
@@ -450,9 +455,30 @@ export default function SchedulePage() {
             <IconShare className="w-4 h-4 mr-2" />
             共有
           </Button>
-          <Button onClick={() => setIsTaskDialogOpen(true)}>
-            追加
-          </Button>
+          <button
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+            onClick={() => {
+              const newTask: Task = {
+                id: `task_${Date.now()}`,
+                name: "新しいタスク",
+                start: new Date(),
+                end: new Date(),
+                type: "task",
+                progress: 0,
+                status: "not_started",
+                isDisabled: false,
+                styles: {
+                  progressColor: "#94A3B8",
+                  progressSelectedColor: "#64748B",
+                },
+              };
+              setTasks([...tasks, newTask]);
+              setSelectedTask(newTask);
+              setIsTaskDialogOpen(true);
+            }}
+          >
+            タスクを追加
+          </button>
         </div>
       </div>
 
@@ -592,6 +618,7 @@ export default function SchedulePage() {
                   .filter(task => task.id !== "display_range")
                   .map(task => ({
                   ...task,
+                  dependencies: task.dependencies || [],  // 依存関係を明示的に設定
                   styles: {
                     ...task.styles,
                     // プロジェクト
@@ -601,6 +628,8 @@ export default function SchedulePage() {
                       backgroundSelectedColor: "#4338CA",
                       progressColor: "#4338CA",
                       progressSelectedColor: "#3730A3",
+                      arrowColor: "#4F46E5",  // 依存関係の矢印の色
+                      arrowIndent: 20,  // 矢印のインデント
                     } :
                     // マイルストーン
                     task.type === "milestone" ? {
@@ -609,6 +638,8 @@ export default function SchedulePage() {
                       backgroundSelectedColor: "#E9967A",
                       progressColor: "#E9967A",
                       progressSelectedColor: "#CD5C5C",
+                      arrowColor: "#FA8072",
+                      arrowIndent: 20,
                     } :
                     // タスク
                     {
@@ -617,6 +648,8 @@ export default function SchedulePage() {
                       backgroundSelectedColor: "#22C55E",
                       progressColor: "#22C55E",
                       progressSelectedColor: "#16A34A",
+                      arrowColor: "#4ADE80",
+                      arrowIndent: 20,
                     })
                   }
                 }))}
@@ -636,6 +669,10 @@ export default function SchedulePage() {
                 TaskListHeader={() => null}
                 TaskListTable={() => null}
                 TooltipContent={() => null}
+                onExpanderClick={() => {}}
+                ganttHeight={600}
+                arrowColor="#64748B"  // 依存関係の矢印のデフォルト色
+                arrowIndent={20}      // 矢印のインデント
               />
             </div>
           </div>
@@ -643,11 +680,14 @@ export default function SchedulePage() {
       </div>
 
       <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby="task-form-description">
           <DialogHeader>
             <DialogTitle>
               {selectedTask ? "タスクを編集" : "タスクを作成"}
             </DialogTitle>
+            <DialogDescription id="task-form-description">
+              タスクの詳細情報を入力してください。
+            </DialogDescription>
           </DialogHeader>
           <TaskForm
             task={selectedTask}
@@ -657,15 +697,16 @@ export default function SchedulePage() {
               setSelectedTask(undefined);
             }}
             milestones={tasks.filter(task => task.type === "milestone")}
+            tasks={tasks.filter(task => task.id !== "display_range")}
           />
         </DialogContent>
       </Dialog>
 
       <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby="share-dialog-description">
           <DialogHeader>
             <DialogTitle>スケジュールを共有</DialogTitle>
-            <DialogDescription>
+            <DialogDescription id="share-dialog-description">
               一時的な共有URLを生成します。URLは指定した期間後に無効になります。
             </DialogDescription>
           </DialogHeader>
@@ -711,14 +752,21 @@ export default function SchedulePage() {
                 </div>
               </div>
             ) : (
-              <Button
+              <button
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
                 onClick={generateShareUrl}
-                className="w-full"
               >
+                <IconShare className="mr-2 h-4 w-4" />
                 共有URLを生成
-              </Button>
+              </button>
             )}
           </div>
+          <button
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+            onClick={() => setIsShareDialogOpen(false)}
+          >
+            キャンセル
+          </button>
         </DialogContent>
       </Dialog>
     </div>

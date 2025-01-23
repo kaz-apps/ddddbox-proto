@@ -8,6 +8,12 @@ const nextConfig = {
     })
     return config
   },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  experimental: {
+    typedRoutes: true,
+  },
 }
 
 module.exports = nextConfig
