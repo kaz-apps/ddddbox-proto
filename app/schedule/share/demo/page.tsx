@@ -211,9 +211,9 @@ export default function SharedSchedulePage() {
               <Gantt
                 tasks={demoTasks.map(task => ({
                   ...task,
+                  isDisabled: false,
                   styles: {
                     ...task.styles,
-                    // プロジェクト
                     ...(task.type === "project" ? {
                       barBackgroundColor: "#4F46E5",
                       backgroundColor: "#4F46E5",
@@ -223,7 +223,6 @@ export default function SharedSchedulePage() {
                       arrowColor: "#4F46E5",
                       arrowIndent: 20,
                     } :
-                    // マイルストーン
                     task.type === "milestone" ? {
                       barBackgroundColor: "#FA8072",
                       backgroundColor: "#FA8072",
@@ -232,9 +231,7 @@ export default function SharedSchedulePage() {
                       progressSelectedColor: "#CD5C5C",
                       arrowColor: "#FA8072",
                       arrowIndent: 20,
-                    } :
-                    // タスク
-                    {
+                    } : {
                       barBackgroundColor: "#4ADE80",
                       backgroundColor: "#4ADE80",
                       backgroundSelectedColor: "#22C55E",

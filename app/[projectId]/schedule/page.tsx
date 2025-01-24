@@ -42,7 +42,7 @@ const initialTasks: Task[] = [
     end: new Date(2025, 0, 31),   // 2025年1月31日
     name: "実施設計1",
     id: "project_1",
-    type: "project",
+    type: "task",
     progress: 0,
     status: "not_started",
     isDisabled: false,
@@ -53,7 +53,7 @@ const initialTasks: Task[] = [
     end: new Date(2025, 2, 31),   // 2025年3月31日
     name: "実施設計2",
     id: "project_2",
-    type: "project",
+    type: "task",
     progress: 0,
     status: "not_started",
     isDisabled: false,
@@ -63,24 +63,22 @@ const initialTasks: Task[] = [
     start: new Date(2024, 11, 15), // 2024年12月15日
     end: new Date(2025, 0, 31),    // 2025年1月31日
     name: "タスク1",
-      id: "task_1",
+    id: "task_1",
     type: "task",
     progress: 0,
     status: "not_started",
     isDisabled: false,
-    project: "project_1",
     styles: { progressColor: "#94A3B8", progressSelectedColor: "#64748B" },
   },
   {
     start: new Date(2025, 1, 1),  // 2025年2月1日
     end: new Date(2025, 2, 15),   // 2025年3月15日
     name: "タスク2",
-      id: "task_2",
+    id: "task_2",
     type: "task",
     progress: 0,
     status: "not_started",
     isDisabled: false,
-    project: "project_2",
     styles: { progressColor: "#94A3B8", progressSelectedColor: "#64748B" },
   },
   {
@@ -92,7 +90,6 @@ const initialTasks: Task[] = [
     progress: 0,
     status: "not_started",
     isDisabled: false,
-    project: "project_1",
     styles: {
       progressColor: "#EF4444",
       progressSelectedColor: "#DC2626",
@@ -154,8 +151,10 @@ export default function SchedulePage() {
 
     // グループごとにタスクを分類
     const milestones = otherTasks.filter(task => task.type === 'milestone');
-    const projects = otherTasks.filter(task => task.type === 'project');
-    const regularTasks = otherTasks.filter(task => task.type === 'task');
+    const designStages = otherTasks.filter(task => task.id.startsWith('project_')); // 設計ステージ
+    const regularTasks = otherTasks.filter(task => 
+      task.type === 'task' && !task.id.startsWith('project_') // 通常のタスク
+    );
 
     // グループ内でのソート
     const sortByOrder = (a: Task, b: Task) => {
@@ -167,7 +166,7 @@ export default function SchedulePage() {
     // ソートされたタスクを結合
     const sortedTasks = [
       ...milestones.sort(sortByOrder),
-      ...projects.sort(sortByOrder),
+      ...designStages.sort(sortByOrder),
       ...regularTasks.sort(sortByOrder),
     ];
 
@@ -274,7 +273,6 @@ export default function SchedulePage() {
             ? {
                 ...task,
                 ...data,
-                project: data.type === "task" ? "project_1" : undefined,
                 dependencies: data.dependencies, // 依存関係を明示的に設定
                 styles:
                   data.type === "project"
@@ -305,7 +303,6 @@ export default function SchedulePage() {
       const newTask: Task = {
         ...data,
         id: `${data.type}_${Math.random().toString(36).substr(2, 9)}`,
-        project: data.type === "task" ? "project_1" : undefined,
         dependencies: data.dependencies, // 依存関係を明示的に設定
         isDisabled: false,
         styles:
@@ -363,16 +360,14 @@ export default function SchedulePage() {
   };
 
   const handleDateChange = (task: GanttTask) => {
-    const updatedTask = tasks.find((t) => t.id === task.id);
-    if (updatedTask) {
+    // すべてのタスクタイプで日付変更を許可
     setTasks((prev) =>
       prev.map((t) =>
         t.id === task.id
-            ? { ...t, start: task.start, end: task.end }
+          ? { ...t, start: task.start, end: task.end }
           : t
       )
     );
-    }
     return true;
   };
 
@@ -442,6 +437,30 @@ export default function SchedulePage() {
             className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
             onClick={() => {
               const newTask: Task = {
+                id: `project_${Date.now()}`,
+                name: "新しい設計ステージ",
+                start: new Date(),
+                end: new Date(),
+                type: "task",
+                progress: 0,
+                status: "not_started",
+                isDisabled: false,
+                styles: {
+                  progressColor: "#F59E0B",
+                  progressSelectedColor: "#D97706",
+                },
+              };
+              setTasks([...tasks, newTask]);
+              setSelectedTask(newTask);
+              setIsTaskDialogOpen(true);
+            }}
+          >
+            設計ステージを追加
+          </button>
+          <button
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+            onClick={() => {
+              const newTask: Task = {
                 id: `task_${Date.now()}`,
                 name: "新しいタスク",
                 start: new Date(),
@@ -488,8 +507,8 @@ export default function SchedulePage() {
                     className="cursor-move"
                   >
                     <TableCell>
-                      {task.type === "project" 
-                        ? "設計ステージ" 
+                      {task.id.startsWith("project_")
+                        ? "設計ステージ"
                         : task.type === "milestone"
                         ? "マイルストーン"
                         : "タスク"}
@@ -600,42 +619,39 @@ export default function SchedulePage() {
                 tasks={sortedTasks
                   .filter(task => task.id !== "display_range")
                   .map(task => ({
-                  ...task,
-                  dependencies: task.dependencies || [],  // 依存関係を明示的に設定
-                  styles: {
-                    ...task.styles,
-                    // プロジェクト
-                    ...(task.type === "project" ? {
-                      barBackgroundColor: "#4F46E5",
-                      backgroundColor: "#4F46E5",
-                      backgroundSelectedColor: "#4338CA",
-                      progressColor: "#4338CA",
-                      progressSelectedColor: "#3730A3",
-                      arrowColor: "#4F46E5",  // 依存関係の矢印の色
-                      arrowIndent: 20,  // 矢印のインデント
-                    } :
-                    // マイルストーン
-                    task.type === "milestone" ? {
-                      barBackgroundColor: "#FA8072",
-                      backgroundColor: "#FA8072",
-                      backgroundSelectedColor: "#E9967A",
-                      progressColor: "#E9967A",
-                      progressSelectedColor: "#CD5C5C",
-                      arrowColor: "#FA8072",
-                      arrowIndent: 20,
-                    } :
-                    // タスク
-                    {
-                      barBackgroundColor: "#4ADE80",
-                      backgroundColor: "#4ADE80",
-                      backgroundSelectedColor: "#22C55E",
-                      progressColor: "#22C55E",
-                      progressSelectedColor: "#16A34A",
-                      arrowColor: "#4ADE80",
-                      arrowIndent: 20,
-                    })
-                  }
-                }))}
+                    ...task,
+                    dependencies: task.dependencies || [],
+                    isDisabled: task.id === "display_range",
+                    styles: {
+                      ...task.styles,
+                      ...(task.id.startsWith("project_") ? {
+                        barBackgroundColor: "#4F46E5",
+                        backgroundColor: "#4F46E5",
+                        backgroundSelectedColor: "#4338CA",
+                        progressColor: "#4338CA",
+                        progressSelectedColor: "#3730A3",
+                        arrowColor: "#4F46E5",
+                        arrowIndent: 20,
+                      } :
+                      task.type === "milestone" ? {
+                        barBackgroundColor: "#FA8072",
+                        backgroundColor: "#FA8072",
+                        backgroundSelectedColor: "#E9967A",
+                        progressColor: "#E9967A",
+                        progressSelectedColor: "#CD5C5C",
+                        arrowColor: "#FA8072",
+                        arrowIndent: 20,
+                      } : {
+                        barBackgroundColor: "#4ADE80",
+                        backgroundColor: "#4ADE80",
+                        backgroundSelectedColor: "#22C55E",
+                        progressColor: "#22C55E",
+                        progressSelectedColor: "#16A34A",
+                        arrowColor: "#4ADE80",
+                        arrowIndent: 20,
+                      })
+                    }
+                  }))}
                 viewMode={viewMode}
                 onDateChange={handleDateChange}
                 onProgressChange={handleProgressChange}
@@ -654,8 +670,8 @@ export default function SchedulePage() {
                 TooltipContent={() => null}
                 onExpanderClick={() => {}}
                 ganttHeight={600}
-                arrowColor="#64748B"  // 依存関係の矢印のデフォルト色
-                arrowIndent={20}      // 矢印のインデント
+                arrowColor="#64748B"
+                arrowIndent={20}
               />
             </div>
           </div>
