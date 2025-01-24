@@ -433,54 +433,82 @@ export default function SchedulePage() {
             <IconShare className="w-4 h-4 mr-2" />
             共有
           </Button>
-          <button
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
-            onClick={() => {
-              const newTask: Task = {
-                id: `project_${Date.now()}`,
-                name: "新しい設計ステージ",
-                start: new Date(),
-                end: new Date(),
-                type: "task",
-                progress: 0,
-                status: "not_started",
-                isDisabled: false,
-                styles: {
-                  progressColor: "#F59E0B",
-                  progressSelectedColor: "#D97706",
-                },
-              };
-              setTasks([...tasks, newTask]);
-              setSelectedTask(newTask);
-              setIsTaskDialogOpen(true);
-            }}
-          >
-            設計ステージを追加
-          </button>
-          <button
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
-            onClick={() => {
-              const newTask: Task = {
-                id: `task_${Date.now()}`,
-                name: "新しいタスク",
-                start: new Date(),
-                end: new Date(),
-                type: "task",
-                progress: 0,
-                status: "not_started",
-                isDisabled: false,
-                styles: {
-                  progressColor: "#94A3B8",
-                  progressSelectedColor: "#64748B",
-                },
-              };
-              setTasks([...tasks, newTask]);
-              setSelectedTask(newTask);
-              setIsTaskDialogOpen(true);
-            }}
-          >
-            タスクを追加
-          </button>
+          <div className="flex space-x-2">
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              onClick={() => {
+                const newTask: Task = {
+                  id: `project_${Date.now()}`,
+                  name: "新しい設計ステージ",
+                  start: new Date(),
+                  end: new Date(),
+                  type: "task",
+                  progress: 0,
+                  status: "not_started",
+                  isDisabled: false,
+                  styles: {
+                    progressColor: "#F59E0B",
+                    progressSelectedColor: "#D97706",
+                  },
+                };
+                setTasks([...tasks, newTask]);
+                setSelectedTask(newTask);
+                setIsTaskDialogOpen(true);
+              }}
+            >
+              設計ステージを追加
+            </Button>
+            <Button
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+              onClick={() => {
+                const newTask: Task = {
+                  id: `milestone_${Date.now()}`,
+                  name: "新しいマイルストーン",
+                  start: new Date(),
+                  end: new Date(),
+                  type: "milestone",
+                  progress: 0,
+                  status: "not_started",
+                  isDisabled: false,
+                  styles: {
+                    progressColor: "#EF4444",
+                    progressSelectedColor: "#DC2626",
+                    backgroundColor: "#FEE2E2",
+                    backgroundSelectedColor: "#FECACA",
+                  },
+                };
+                setTasks([...tasks, newTask]);
+                setSelectedTask(newTask);
+                setIsTaskDialogOpen(true);
+              }}
+            >
+              マイルストーンを追加
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => {
+                const newTask: Task = {
+                  id: `task_${Date.now()}`,
+                  name: "新しいタスク",
+                  start: new Date(),
+                  end: new Date(),
+                  type: "task",
+                  progress: 0,
+                  status: "not_started",
+                  isDisabled: false,
+                  styles: {
+                    progressColor: "#94A3B8",
+                    progressSelectedColor: "#64748B",
+                  },
+                };
+                setTasks([...tasks, newTask]);
+                setSelectedTask(newTask);
+                setIsTaskDialogOpen(true);
+              }}
+            >
+              タスクを追加
+            </Button>
+          </div>
         </div>
       </div>
 
