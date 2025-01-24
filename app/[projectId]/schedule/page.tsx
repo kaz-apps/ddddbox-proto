@@ -34,6 +34,9 @@ import { IconShare, IconCopy } from "@tabler/icons-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import { ScheduleHeader } from "@/components/project-schedule/schedule-header";
+import { ScheduleAlerts } from "@/components/project-schedule/schedule-alerts";
+import { ScheduleGantt } from "@/components/project-schedule/schedule-gantt";
 
 // サンプルデータ
 const initialTasks: Task[] = [
@@ -371,6 +374,46 @@ export default function SchedulePage() {
     return true;
   };
 
+  const handleAddTask = (taskType: "design" | "milestone" | "task") => {
+    const newTask: Task = {
+      id: taskType === "design" 
+        ? `project_${Date.now()}`
+        : taskType === "milestone"
+        ? `milestone_${Date.now()}`
+        : `task_${Date.now()}`,
+      name: taskType === "design"
+        ? "新しい設計ステージ"
+        : taskType === "milestone"
+        ? "新しいマイルストーン"
+        : "新しいタスク",
+      start: new Date(),
+      end: new Date(),
+      type: taskType === "milestone" ? "milestone" : "task",
+      progress: 0,
+      status: "not_started",
+      isDisabled: false,
+      styles: taskType === "design"
+        ? {
+            progressColor: "#F59E0B",
+            progressSelectedColor: "#D97706",
+          }
+        : taskType === "milestone"
+        ? {
+            progressColor: "#EF4444",
+            progressSelectedColor: "#DC2626",
+            backgroundColor: "#FEE2E2",
+            backgroundSelectedColor: "#FECACA",
+          }
+        : {
+            progressColor: "#94A3B8",
+            progressSelectedColor: "#64748B",
+          },
+    };
+    setTasks([...tasks, newTask]);
+    setSelectedTask(newTask);
+    setIsTaskDialogOpen(true);
+  };
+
   // 共有URLを生成する関数
   const generateShareUrl = async () => {
     // デモ用の固定URLを返す
@@ -391,411 +434,120 @@ export default function SchedulePage() {
 
   return (
     <div className="mx-auto py-6 space-y-4">
-      {alerts.length > 0 && (
-        <div className="space-y-2">
-          {alerts.map((alert) => (
-            <Alert key={alert.milestoneId} variant="destructive">
-              <IconAlertTriangle className="h-4 w-4" />
-              <AlertTitle>マイルストーン期限超過</AlertTitle>
-              <AlertDescription>
-                マイルストーン「{alert.milestoneName}」({alert.dueDate.toLocaleDateString("ja-JP")})に関連する
-                以下のタスクが未完了です：
-                <ul className="list-disc list-inside mt-2">
-                  {alert.incompleteTasks.map((taskName, index) => (
-                    <li key={index}>{taskName}</li>
-                  ))}
-                </ul>
-              </AlertDescription>
-            </Alert>
-          ))}
-        </div>
+      <ScheduleAlerts alerts={alerts} />
+      
+      <ScheduleHeader
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onShareClick={() => setIsShareDialogOpen(true)}
+        onAddTask={handleAddTask}
+      />
+
+      <ScheduleGantt
+        tasks={sortedTasks}
+        viewMode={viewMode}
+        onDateChange={handleDateChange}
+        onProgressChange={handleProgressChange}
+        onTaskClick={handleTaskClick}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      />
+
+      {isTaskDialogOpen && (
+        <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {selectedTask ? "タスクを編集" : "新しいタスク"}
+              </DialogTitle>
+              <DialogDescription>
+                タスクの詳細情報を入力してください。
+              </DialogDescription>
+            </DialogHeader>
+            <TaskForm
+              task={selectedTask}
+              tasks={tasks.filter(task => task.id !== "display_range")}
+              milestones={tasks.filter(task => task.type === "milestone")}
+              onSubmit={handleTaskSubmit}
+              onCancel={() => {
+                setIsTaskDialogOpen(false);
+                setSelectedTask(undefined);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
 
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">スケジュール</h1>
-        <div className="flex items-center space-x-4">
-          <Select
-            value={viewMode}
-            onValueChange={(value: keyof typeof ViewMode) => setViewMode(value)}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="表示モード" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Day">日表示</SelectItem>
-              <SelectItem value="Month">月表示</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button 
-            variant="outline"
-            onClick={() => setIsShareDialogOpen(true)}
-          >
-            <IconShare className="w-4 h-4 mr-2" />
-            共有
-          </Button>
-          <div className="flex space-x-2">
-            <Button
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              onClick={() => {
-                const newTask: Task = {
-                  id: `project_${Date.now()}`,
-                  name: "新しい設計ステージ",
-                  start: new Date(),
-                  end: new Date(),
-                  type: "task",
-                  progress: 0,
-                  status: "not_started",
-                  isDisabled: false,
-                  styles: {
-                    progressColor: "#F59E0B",
-                    progressSelectedColor: "#D97706",
-                  },
-                };
-                setTasks([...tasks, newTask]);
-                setSelectedTask(newTask);
-                setIsTaskDialogOpen(true);
-              }}
-            >
-              設計ステージを追加
-            </Button>
-            <Button
-              className="bg-rose-600 hover:bg-rose-700 text-white"
-              onClick={() => {
-                const newTask: Task = {
-                  id: `milestone_${Date.now()}`,
-                  name: "新しいマイルストーン",
-                  start: new Date(),
-                  end: new Date(),
-                  type: "milestone",
-                  progress: 0,
-                  status: "not_started",
-                  isDisabled: false,
-                  styles: {
-                    progressColor: "#EF4444",
-                    progressSelectedColor: "#DC2626",
-                    backgroundColor: "#FEE2E2",
-                    backgroundSelectedColor: "#FECACA",
-                  },
-                };
-                setTasks([...tasks, newTask]);
-                setSelectedTask(newTask);
-                setIsTaskDialogOpen(true);
-              }}
-            >
-              マイルストーンを追加
-            </Button>
-            <Button
-              className="bg-green-600 hover:bg-green-700 text-white"
-              onClick={() => {
-                const newTask: Task = {
-                  id: `task_${Date.now()}`,
-                  name: "新しいタスク",
-                  start: new Date(),
-                  end: new Date(),
-                  type: "task",
-                  progress: 0,
-                  status: "not_started",
-                  isDisabled: false,
-                  styles: {
-                    progressColor: "#94A3B8",
-                    progressSelectedColor: "#64748B",
-                  },
-                };
-                setTasks([...tasks, newTask]);
-                setSelectedTask(newTask);
-                setIsTaskDialogOpen(true);
-              }}
-            >
-              タスクを追加
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="border rounded-lg p-4 bg-white">
-        <div className="flex h-[600px]">
-          <div className="w-[560px] flex-shrink-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[120px]">グループ</TableHead>
-                  <TableHead className="w-[200px]">名前</TableHead>
-                  <TableHead className="w-[120px]">開始日</TableHead>
-                  <TableHead className="w-[120px]">終了日</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedTasks.filter(task => task.id !== "display_range").map((task, index) => (
-                  <TableRow 
-                    key={task.id}
-                    draggable
-                    onDragStart={() => handleDragStart(index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDrop={handleDrop}
-                    className="cursor-move"
-                  >
-                    <TableCell>
-                      {task.id.startsWith("project_")
-                        ? "設計ステージ"
-                        : task.type === "milestone"
-                        ? "マイルストーン"
-                        : "タスク"}
-                    </TableCell>
-                    <TableCell>{task.name}</TableCell>
-                    <TableCell>
-                      {task.start.toLocaleDateString("ja-JP", {
-                        year: "numeric",
-                        month: "numeric",
-                        day: "numeric",
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      {task.end.toLocaleDateString("ja-JP", {
-                        year: "numeric",
-                        month: "numeric",
-                        day: "numeric",
-                      })}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <div 
-            ref={scrollContainerRef}
-            className="flex-grow overflow-auto scroll-smooth"
-          >
-            <div style={{ 
-              minWidth: viewMode === ViewMode.Day ? "3000px" : "1500px",
-              height: "100%"
-            }}>
-              <style jsx global>{`
-                /* その他の既存のスタイル */
-                .bar-wrapper {
-                  position: relative;
-                  height: 50px !important;
-                }
-                .bar {
-                  position: relative;
-                  min-width: 100px;
-                  display: flex;
-                  align-items: center;
-                  opacity: 1 !important;
-                  height: 50px !important;
-                }
-                .bar > svg {
-                  opacity: 1 !important;
-                  height: 50px !important;
-                }
-                .bar > svg rect {
-                  opacity: 1 !important;
-                }
-                /* テーブルとガントチャートの行の高さを揃える */
-                tr {
-                  height: 50px !important;
-                  min-height: 50px !important;
-                  max-height: 50px !important;
-                }
-                td {
-                  height: 50px !important;
-                  min-height: 50px !important;
-                  max-height: 50px !important;
-                  padding-top: 0 !important;
-                  padding-bottom: 0 !important;
-                }
-                .gantt-table-header {
-                  height: 50px !important;
-                }
-                /* 表示期間タスクを完全に非表示にする */
-                .bar[data-task-id="display_range"] {
-                  display: none !important;
-                }
-                /* プロジェクトタスクのバー */
-                .bar[data-task-type="project"] > svg rect._31ERP {
-                  fill: #4F46E5 !important; /* インディゴ-600 */
-                }
-                .bar[data-task-type="project"] > svg rect._3T42e {
-                  fill: #4338CA !important; /* インディゴ-700 */
-                }
-                /* マイルストーンのバー */
-                .bar[data-task-type="milestone"] > svg rect._31ERP {
-                  fill: #FA8072 !important; /* サーモンピンク */
-                }
-                .bar[data-task-type="milestone"] > svg rect._3T42e {
-                  fill: #E9967A !important; /* ダークサーモン */
-                }
-                /* 通常タスクのバー */
-                .bar[data-task-type="task"] > svg rect._31ERP {
-                  fill: #4ADE80 !important; /* グリーン-500 */
-                }
-                .bar[data-task-type="task"] > svg rect._3T42e {
-                  fill: #22C55E !important; /* グリーン-600 */
-                }
-                /* ツールチップを非表示にする */
-                .tooltip-default {
-                  display: none !important;
-                }
-                /* ガントチャートの行の高さを調整 */
-                .gantt-row {
-                  height: 50px !important;
-                }
-                .gantt-row-bar {
-                  height: 50px !important;
-                }
-              `}</style>
-              <Gantt
-                tasks={sortedTasks
-                  .filter(task => task.id !== "display_range")
-                  .map(task => ({
-                    ...task,
-                    dependencies: task.dependencies || [],
-                    isDisabled: task.id === "display_range",
-                    styles: {
-                      ...task.styles,
-                      ...(task.id.startsWith("project_") ? {
-                        barBackgroundColor: "#4F46E5",
-                        backgroundColor: "#4F46E5",
-                        backgroundSelectedColor: "#4338CA",
-                        progressColor: "#4338CA",
-                        progressSelectedColor: "#3730A3",
-                        arrowColor: "#4F46E5",
-                        arrowIndent: 20,
-                      } :
-                      task.type === "milestone" ? {
-                        barBackgroundColor: "#FA8072",
-                        backgroundColor: "#FA8072",
-                        backgroundSelectedColor: "#E9967A",
-                        progressColor: "#E9967A",
-                        progressSelectedColor: "#CD5C5C",
-                        arrowColor: "#FA8072",
-                        arrowIndent: 20,
-                      } : {
-                        barBackgroundColor: "#4ADE80",
-                        backgroundColor: "#4ADE80",
-                        backgroundSelectedColor: "#22C55E",
-                        progressColor: "#22C55E",
-                        progressSelectedColor: "#16A34A",
-                        arrowColor: "#4ADE80",
-                        arrowIndent: 20,
-                      })
-                    }
-                  }))}
-                viewMode={viewMode}
-                onDateChange={handleDateChange}
-                onProgressChange={handleProgressChange}
-                onDoubleClick={handleTaskClick}
-                listCellWidth=""
-                columnWidth={viewMode === ViewMode.Day ? 40 : 200}
-                locale="ja-JP"
-                barFill={75}
-                rowHeight={50}
-                barCornerRadius={4}
-                fontSize="12px"
-                headerHeight={50}
-                rtl={false}
-                TaskListHeader={() => null}
-                TaskListTable={() => null}
-                TooltipContent={() => null}
-                onExpanderClick={() => {}}
-                ganttHeight={600}
-                arrowColor="#64748B"
-                arrowIndent={20}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-        <DialogContent aria-describedby="task-form-description">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedTask ? "タスクを編集" : "タスクを作成"}
-            </DialogTitle>
-            <DialogDescription id="task-form-description">
-              タスクの詳細情報を入力してください。
-            </DialogDescription>
-          </DialogHeader>
-          <TaskForm
-            task={selectedTask}
-            onSubmit={handleTaskSubmit}
-            onCancel={() => {
-              setIsTaskDialogOpen(false);
-              setSelectedTask(undefined);
-            }}
-            milestones={tasks.filter(task => task.type === "milestone")}
-            tasks={tasks.filter(task => task.id !== "display_range")}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-        <DialogContent aria-describedby="share-dialog-description">
-          <DialogHeader>
-            <DialogTitle>スケジュールを共有</DialogTitle>
-            <DialogDescription id="share-dialog-description">
-              一時的な共有URLを生成します。URLは指定した期間後に無効になります。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="expiry" className="text-sm font-medium">
-                有効期限
-              </label>
-              <Select
-                value={shareExpiry}
-                onValueChange={setShareExpiry}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1時間</SelectItem>
-                  <SelectItem value="24">24時間</SelectItem>
-                  <SelectItem value="72">3日間</SelectItem>
-                  <SelectItem value="168">7日間</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {shareUrl ? (
+      {isShareDialogOpen && (
+        <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>スケジュールを共有</DialogTitle>
+              <DialogDescription>
+                共有用のURLを生成します。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="share-url" className="text-sm font-medium">
-                  共有URL
+                <label htmlFor="expiry" className="text-sm font-medium">
+                  有効期限
                 </label>
-                <div className="flex space-x-2">
-                  <Input
-                    id="share-url"
-                    value={shareUrl}
-                    readOnly
-                    className="flex-grow"
-                  />
-                  <Button
-                    variant="outline"
-                    onClick={copyToClipboard}
-                  >
-                    <IconCopy className="w-4 h-4" />
-                  </Button>
-                </div>
+                <Select
+                  value={shareExpiry}
+                  onValueChange={setShareExpiry}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1時間</SelectItem>
+                    <SelectItem value="24">24時間</SelectItem>
+                    <SelectItem value="72">3日間</SelectItem>
+                    <SelectItem value="168">7日間</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            ) : (
-              <button
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
-                onClick={generateShareUrl}
-              >
-                <IconShare className="mr-2 h-4 w-4" />
-                共有URLを生成
-              </button>
-            )}
-          </div>
-          <button
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-            onClick={() => setIsShareDialogOpen(false)}
-          >
-            キャンセル
-          </button>
-        </DialogContent>
-      </Dialog>
+              
+              {shareUrl ? (
+                <div className="space-y-2">
+                  <label htmlFor="share-url" className="text-sm font-medium">
+                    共有URL
+                  </label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="share-url"
+                      value={shareUrl}
+                      readOnly
+                      className="flex-grow"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={copyToClipboard}
+                    >
+                      <IconCopy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+                  onClick={generateShareUrl}
+                >
+                  <IconShare className="mr-2 h-4 w-4" />
+                  共有URLを生成
+                </button>
+              )}
+            </div>
+            <button
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+              onClick={() => setIsShareDialogOpen(false)}
+            >
+              キャンセル
+            </button>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
