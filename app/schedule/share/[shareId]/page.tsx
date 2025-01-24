@@ -29,17 +29,20 @@ export default function SharedSchedulePage({
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Month);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
 
   useEffect(() => {
     const fetchSharedSchedule = async () => {
       try {
-        const response = await fetch(`/api/schedule/share?id=${params.shareId}`);
+        const response = await fetch(`/api/schedule/share/${params.shareId}`);
+        const data = await response.json();
+        
         if (!response.ok) {
-          const data = await response.json();
           throw new Error(data.error || "Failed to load schedule");
         }
-        const data = await response.json();
+        
         setTasks(data.tasks);
+        setExpiresAt(new Date(data.expiresAt));
       } catch (error) {
         setError(error instanceof Error ? error.message : "An error occurred");
       } finally {
@@ -71,6 +74,17 @@ export default function SharedSchedulePage({
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">共有スケジュール</h1>
         <div className="flex items-center space-x-4">
+          {expiresAt && (
+            <div className="text-sm text-gray-500">
+              有効期限: {expiresAt.toLocaleString("ja-JP", {
+                year: "numeric",
+                month: "numeric",
+                day: "numeric",
+                hour: "numeric",
+                minute: "numeric"
+              })}まで
+            </div>
+          )}
           <Select
             value={viewMode}
             onValueChange={(value: ViewMode) => setViewMode(value)}

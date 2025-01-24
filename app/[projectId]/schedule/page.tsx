@@ -378,26 +378,9 @@ export default function SchedulePage() {
 
   // 共有URLを生成する関数
   const generateShareUrl = async () => {
-    try {
-      const response = await fetch("/api/schedule/share", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          tasks: tasks.filter(task => task.id !== "display_range"),
-          expiryHours: parseInt(shareExpiry),
-        }),
-      });
-      
-      if (!response.ok) throw new Error("Failed to generate share URL");
-      
-      const { url } = await response.json();
-      setShareUrl(url);
-    } catch (error) {
-      console.error("Error generating share URL:", error);
-      // TODO: エラー処理
-    }
+    // デモ用の固定URLを返す
+    const demoUrl = `${process.env.NEXT_PUBLIC_APP_URL}/schedule/share/demo`;
+    setShareUrl(demoUrl);
   };
 
   // URLをクリップボードにコピーする関数
