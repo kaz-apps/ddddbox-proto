@@ -23,42 +23,69 @@ import {
 // デモ用のダミーデータ
 const demoTasks: Task[] = [
   {
-    id: "1",
-    name: "基本設計",
-    start: new Date("2024-03-01"),
-    end: new Date("2024-03-31"),
-    type: "project",
-    progress: 45,
-    status: "in_progress",
-    isDisabled: false,
-    styles: { progressColor: "#ff9900", progressSelectedColor: "#ff9900" },
-  },
-  {
-    id: "2",
-    name: "要件定義",
-    start: new Date("2024-03-01"),
-    end: new Date("2024-03-15"),
+    start: new Date(2024, 11, 1), // 2024年12月1日
+    end: new Date(2025, 0, 31),   // 2025年1月31日
+    name: "実施設計1",
+    id: "project_1",
     type: "task",
-    progress: 100,
-    status: "completed",
+    progress: 0,
+    status: "not_started",
     isDisabled: false,
-    project: "1",
+    styles: { progressColor: "#F59E0B", progressSelectedColor: "#D97706" },
   },
   {
-    id: "3",
-    name: "設計レビュー",
-    start: new Date("2024-03-15"),
-    end: new Date("2024-03-15"),
+    start: new Date(2025, 1, 1),  // 2025年2月1日
+    end: new Date(2025, 2, 31),   // 2025年3月31日
+    name: "実施設計2",
+    id: "project_2",
+    type: "task",
+    progress: 0,
+    status: "not_started",
+    isDisabled: false,
+    styles: { progressColor: "#F59E0B", progressSelectedColor: "#D97706" },
+  },
+  {
+    start: new Date(2024, 11, 15), // 2024年12月15日
+    end: new Date(2025, 0, 31),    // 2025年1月31日
+    name: "タスク1",
+    id: "task_1",
+    type: "task",
+    progress: 0,
+    status: "not_started",
+    isDisabled: false,
+    styles: { progressColor: "#94A3B8", progressSelectedColor: "#64748B" },
+  },
+  {
+    start: new Date(2025, 1, 1),  // 2025年2月1日
+    end: new Date(2025, 2, 15),   // 2025年3月15日
+    name: "タスク2",
+    id: "task_2",
+    type: "task",
+    progress: 0,
+    status: "not_started",
+    isDisabled: false,
+    styles: { progressColor: "#94A3B8", progressSelectedColor: "#64748B" },
+  },
+  {
+    start: new Date(2024, 11, 31), // 2024年12月31日
+    end: new Date(2024, 11, 31),   // 2024年12月31日
+    name: "設計完了",
+    id: "milestone_1",
     type: "milestone",
     progress: 0,
     status: "not_started",
     isDisabled: false,
-    project: "1",
+    styles: {
+      progressColor: "#EF4444",
+      progressSelectedColor: "#DC2626",
+      backgroundColor: "#FEE2E2",
+      backgroundSelectedColor: "#FECACA",
+    },
   },
 ];
 
 // デモ用の固定有効期限
-const demoExpiresAt = new Date("2024-03-31T23:59:59");
+const demoExpiresAt = new Date("2025-12-31T23:59:59");
 
 export default function SharedSchedulePage() {
   const [viewMode, setViewMode] = useState<"Day" | "Month">("Month");
@@ -108,7 +135,7 @@ export default function SharedSchedulePage() {
                 {demoTasks.map((task) => (
                   <TableRow key={task.id}>
                     <TableCell>
-                      {task.type === "project" 
+                      {task.id.startsWith("project_")
                         ? "設計ステージ" 
                         : task.type === "milestone"
                         ? "マイルストーン"
@@ -214,7 +241,7 @@ export default function SharedSchedulePage() {
                   isDisabled: false,
                   styles: {
                     ...task.styles,
-                    ...(task.type === "project" ? {
+                    ...(task.id.startsWith("project_") ? {
                       barBackgroundColor: "#4F46E5",
                       backgroundColor: "#4F46E5",
                       backgroundSelectedColor: "#4338CA",
