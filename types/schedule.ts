@@ -1,6 +1,19 @@
 export type TaskStatus = "not_started" | "in_progress" | "completed";
 export type TaskType = "project" | "milestone" | "task";
 
+export interface Stage {
+  id: string;
+  name: string;
+  title: string;
+  description?: string;
+  startDate: Date;
+  endDate: Date;
+  status: TaskStatus;
+  order: number;
+  color?: string;
+  layer: number;
+}
+
 export interface Task {
   id: string;
   name: string;

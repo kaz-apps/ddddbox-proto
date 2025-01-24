@@ -26,7 +26,7 @@ export default function SharedSchedulePage({
   params: { shareId: string };
 }) {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Month);
+  const [viewMode, setViewMode] = useState<keyof typeof ViewMode>(ViewMode.Month);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
@@ -87,7 +87,7 @@ export default function SharedSchedulePage({
           )}
           <Select
             value={viewMode}
-            onValueChange={(value: ViewMode) => setViewMode(value)}
+            onValueChange={(value: keyof typeof ViewMode) => setViewMode(value)}
           >
             <SelectTrigger className="w-32">
               <SelectValue />

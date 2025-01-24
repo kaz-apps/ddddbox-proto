@@ -32,17 +32,22 @@ export function StageForm({ stage, onSubmit, onCancel }: StageFormProps) {
     startDate: formatDate(stage?.startDate),
     endDate: formatDate(stage?.endDate),
     color: stage?.color || '#E5E7EB',
-    layer: stage?.layer ?? 0
+    layer: stage?.layer ?? 0,
+    status: stage?.status || 'not_started',
+    order: stage?.order ?? 0
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSubmit({
+      name: formData.title,
       title: formData.title,
       startDate: new Date(formData.startDate),
       endDate: new Date(formData.endDate),
       color: formData.color,
-      layer: formData.layer
+      layer: formData.layer,
+      status: formData.status,
+      order: formData.order
     })
   }
 
